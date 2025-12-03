@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Game Launcher</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      /* --- GLOBAL STYLES --- */
+      body {
+        margin: 0;
+        background: #000;
+        color: #0f0;
+        font-family: "Courier New", monospace;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #loader,
+      #main-menu,
+      #sub-menu {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      #log {
+        width: 80%;
+        max-width: 800px;
+        height: 320px;
+        overflow-y: auto;
+        border: 1px solid #0f0;
+        padding: 10px;
+        margin-bottom: 20px;
+        background: rgba(0, 15, 0, 0.1);
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #0f0;
+        border-top: 4px solid transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .menu-title {
+        font-size: 2.5em;
+        margin-bottom: 30px;
+        text-shadow: 0 0 10px #0f0;
+      }
+      .menu-btn,
+      .level-btn {
+        background: transparent;
+        border: 2px solid #0f0;
+        color: #0f0;
+        padding: 12px 24px;
+        margin: 8px;
+        font-size: 1.2em;
+        cursor: pointer;
+        width: 280px;
+        transition: all 0.3s ease;
+      }
+      .menu-btn:hover,
+      .level-btn:hover {
+        background: #0f0;
+        color: #000;
+        box-shadow: 0 0 20px #0f0;
+      }
+      @keyframes flashRed {
+        0% {
+          color: #f00;
+          border-color: #f00;
+        }
+        50% {
+          color: #000;
+          border-color: #000;
+          background: #f00;
+        }
+        100% {
+          color: #f00;
+          border-color: #f00;
+          background: transparent;
+        }
+      }
+      .scp-btn {
+        border-color: #f00;
+        color: #f00;
+        text-shadow: 0 0 10px #f00;
+        animation: flashRed 1s infinite;
+      }
+      .error {
+        color: #f55;
+      }
+      .success {
+        color: #0f0;
+      }
+      .scp-log {
+        color: #f00;
+        text-shadow: 0 0 5px #f00;
+      }
+
+      /* --- SCP overlay --- */
+      #scp-warning {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.95);
+        color: #f00;
+        font-family: "Courier New", monospace;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        z-index: 999;
+      }
+      #scp-pass {
+        margin: 20px;
+        padding: 10px;
+        font-size: 1.2em;
+        border: 2px solid #f00;
+        background: #000;
+        color: #f00;
+        text-align: center;
+      }
+      #scp-warning button {
+        margin: 10px;
+        padding: 12px 24px;
+        border: 2px solid #f00;
+        background: transparent;
+        color: #f00;
+        cursor: pointer;
+      }
+      #scp-warning button:hover {
+        background: #f00;
+        color: #000;
+        box-shadow: 0 0 20px #f00;
+      }
+      #scp-error {
+        margin-top: 15px;
+        color: #f55;
+        min-height: 22px;
+      }
+
+      /* --- Cutscene overlay --- */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .overlay video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .overlay button {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        border: 1px solid #0f0;
+        background: transparent;
+        color: #0f0;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      /* --- Sub-menu button container scroll --- */
+      #button-container {
+        max-height: 70vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- LOADER -->
+    <div id="loader">
+      <div class="spinner"></div>
+      <div id="log"></div>
+    </div>
+
+    <!-- MAIN MENU -->
+    <div id="main-menu" style="display: none">
+      <div class="menu-title">MAIN MENU</div>
+      <button class="menu-btn" onclick="showCategory('backrooms')">
+        Backrooms Levels
+      </button>
+      <button class="menu-btn scp-btn" onclick="showCategory('scp')">
+        SCP Levels
+      </button>
+      <button class="menu-btn" onclick="showCategory('old')">Old Game</button>
+    </div>
+
+    <!-- SUB MENU -->
+    <div id="sub-menu" style="display: none">
+      <div class="menu-title" id="sub-title"></div>
+      <div id="button-container"></div>
+      <button class="menu-btn" onclick="returnToMain()">← Back</button>
+    </div>
+
+    <!-- SCP WARNING -->
+    <div id="scp-warning">
+      <h2>⚠ SCP Containment Access Required ⚠</h2>
+      <p>
+        You are attempting to access a restricted SCP containment area.<br />
+        Unauthorized entry may result in anomalous exposure.
+      </p>
+      <input
+        id="scp-pass"
+        type="password"
+        placeholder="Enter containment passcode"
+      />
+      <div>
+        <button id="scp-confirm">Confirm Entry</button>
+        <button id="scp-cancel">Cancel</button>
+      </div>
+      <div id="scp-error"></div>
+    </div>
+
+    <!-- Siren -->
+    <audio
+      id="scp-siren"
+      src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
+      preload="auto"
+      loop
+    ></audio>
+
+    <script>
+      /* --- CONFIG --- */
+      // Keep your original registry style
+      const CUTSCENE_VIDEO = "Level0_intro_safe.mp4";
+      const LEVEL0_HTML = "Level0.html";
+
+      const files = [
+        {
+          filename: LEVEL0_HTML,
+          name: "Level 0 – Office Maze",
+          category: "backrooms",
+        },
+        {
+          filename: "Level1.html",
+          name: "Level 1 – Parking Garage",
+          category: "backrooms",
+        },
+        {
+          filename: "Level37.html",
+          name: "Level 37 – Poolrooms",
+          category: "backrooms",
+        },
+        { filename: "TEMP.html", name: "Old Backrooms Game", category: "old" },
+        { filename: "Level0v2.html", name: "SCP Level 0", category: "scp" },
+      ];
+
+      const validLevels = [];
+      const log = document.getElementById("log");
+      const loader = document.getElementById("loader");
+      const mainMenu = document.getElementById("main-menu");
+      const subMenu = document.getElementById("sub-menu");
+      const buttonContainer = document.getElementById("button-container");
+      const subTitle = document.getElementById("sub-title");
+
+      let SCP_PASSCODE = String(Math.floor(100 + Math.random() * 900));
+
+      /* --- LOGGING + BOOT --- */
+      function addLog(msg, cls = "") {
+        return new Promise((resolve) => {
+          const line = document.createElement("div");
+          line.textContent = msg;
+          if (cls) line.className = cls;
+          log.appendChild(line);
+          log.scrollTop = log.scrollHeight;
+          setTimeout(resolve, 220 + Math.random() * 260);
+        });
+      }
+
+      async function fakeChecks() {
+        const checks = [
+          "Booting system kernel...",
+          "Initializing memory modules...",
+          "Calibrating rendering pipeline...",
+          "Verifying asset integrity...",
+          "Preparing level registry...",
+          "Cross-referencing SCP containment files...",
+          "Validating SCP Level entries...",
+          "⚠️ Warning: anomalous entities detected...",
+        ];
+        for (const c of checks) {
+          const cls =
+            c.includes("SCP") || c.includes("anomalous") ? "scp-log" : "";
+          await addLog(c, cls);
+        }
+        await addLog(
+          `Containment override token issued: ${SCP_PASSCODE}`,
+          "scp-log"
+        );
+      }
+
+      /* --- PROBES (HTML availability) --- */
+      function probeHTMLExists(path) {
+        return new Promise((resolve) => {
+          const iframe = document.createElement("iframe");
+          Object.assign(iframe.style, {
+            width: "0",
+            height: "0",
+            border: "0",
+            visibility: "hidden",
+          });
+          iframe.src = path;
+
+          let timeout = setTimeout(() => {
+            cleanup();
+            resolve(false);
+          }, 2500);
+          function cleanup() {
+            clearTimeout(timeout);
+            try {
+              iframe.remove();
+            } catch {}
+          }
+
+          iframe.onload = () => {
+            const doc = iframe.contentDocument;
+            const hasContent =
+              doc && doc.body && doc.body.innerHTML.trim().length > 0;
+            cleanup();
+            resolve(hasContent);
+          };
+          iframe.onerror = () => {
+            cleanup();
+            resolve(false);
+          };
+
+          document.body.appendChild(iframe);
+        });
+      }
+
+      async function checkFile(file) {
+        await addLog(`→ Scanning ${file.name} (${file.filename})...`);
+        const ok = await probeHTMLExists(file.filename);
+        if (ok) {
+          validLevels.push(file);
+          await addLog(
+            `[✓] ${file.name} ${
+              file.category === "scp" ? "anomaly verified" : "verified"
+            }`,
+            file.category === "scp" ? "scp-log" : "success"
+          );
+        } else {
+          await addLog(`[✖] ${file.name} missing or failed to load`, "error");
+        }
+      }
+
+      async function bootSequence() {
+        await fakeChecks();
+        for (const f of files) {
+          await checkFile(f);
+        }
+        await addLog("Scan complete.");
+        if (validLevels.length) {
+          await addLog(`Found ${validLevels.length} valid level(s)`, "success");
+          setTimeout(() => {
+            loader.style.display = "none";
+            mainMenu.style.display = "flex";
+          }, 900);
+        } else {
+          await addLog(
+            "No valid levels found. Place level HTML files next to index.html.",
+            "error"
+          );
+        }
+      }
+
+      /* --- MENUS --- */
+      function showCategory(category) {
+        mainMenu.style.display = "none";
+        subMenu.style.display = "flex";
+        buttonContainer.innerHTML = "";
+
+        subTitle.textContent =
+          category === "backrooms"
+            ? "Backrooms Levels"
+            : category === "scp"
+            ? "SCP Levels"
+            : "Old Game";
+
+        if (category === "backrooms") {
+          // Level 0 button — opens its submenu
+          const level0Available = !!validLevels.find(
+            (l) => l.filename === LEVEL0_HTML
+          );
+          const level0Btn = document.createElement("button");
+          level0Btn.className = "level-btn";
+          level0Btn.textContent = level0Available
+            ? "Level 0"
+            : "Level 0 (unavailable — file missing)";
+          level0Btn.disabled = !level0Available;
+          level0Btn.onclick = () => showLevel0Options(level0Available);
+          buttonContainer.appendChild(level0Btn);
+
+          // Other backrooms levels
+          validLevels
+            .filter(
+              (l) => l.category === "backrooms" && l.filename !== LEVEL0_HTML
+            )
+            .forEach((level) => {
+              const btn = document.createElement("button");
+              btn.className = "level-btn";
+              btn.textContent = level.name;
+              btn.onclick = () => launchLevel(level.filename);
+              buttonContainer.appendChild(btn);
+            });
+        }
+
+        if (category === "scp") {
+          validLevels
+            .filter((l) => l.category === "scp")
+            .forEach((level) => {
+              const btn = document.createElement("button");
+              btn.className = "level-btn scp-btn";
+              btn.textContent = level.name;
+              btn.onclick = () => showSCPWarning(level.filename);
+              buttonContainer.appendChild(btn);
+            });
+        }
+
+        if (category === "old") {
+          validLevels
+            .filter((l) => l.category === "old")
+            .forEach((level) => {
+              const btn = document.createElement("button");
+              btn.className = "level-btn";
+              btn.textContent = level.name;
+              btn.onclick = () => launchLevel(level.filename);
+              buttonContainer.appendChild(btn);
+            });
+        }
+      }
+
+      function showLevel0Options(levelAvailable) {
+        subTitle.textContent = "Level 0 — Choose Start";
+        buttonContainer.innerHTML = "";
+
+        // Play Cutscene (inline from index), then Level0.html
+        const playCutsceneBtn = document.createElement("button");
+        playCutsceneBtn.className = "level-btn";
+        playCutsceneBtn.textContent = "Play Cutscene";
+        playCutsceneBtn.disabled = !levelAvailable; // require Level0.html present to proceed
+        playCutsceneBtn.onclick = () =>
+          playCutsceneThenLevel(CUTSCENE_VIDEO, LEVEL0_HTML);
+        buttonContainer.appendChild(playCutsceneBtn);
+
+        // Play Level (skip cutscene)
+        const playLevelBtn = document.createElement("button");
+        playLevelBtn.className = "level-btn";
+        playLevelBtn.textContent = levelAvailable
+          ? "Play Level"
+          : "Play Level (unavailable — file missing)";
+        playLevelBtn.disabled = !levelAvailable;
+        playLevelBtn.onclick = () => launchLevel(LEVEL0_HTML);
+        buttonContainer.appendChild(playLevelBtn);
+      }
+
+      /* --- Inline cutscene overlay and flow --- */
+      function playCutsceneThenLevel(videoSrc, levelFile) {
+        const overlay = document.createElement("div");
+        overlay.className = "overlay";
+
+        const vid = document.createElement("video");
+        vid.src = videoSrc;
+        vid.autoplay = true;
+        vid.muted = true;
+        vid.playsInline = true;
+
+        const skip = document.createElement("button");
+        skip.textContent = "Skip";
+
+        overlay.appendChild(vid);
+        overlay.appendChild(skip);
+        document.body.appendChild(overlay);
+
+        const tryPlay = () => vid.play().catch(() => {});
+        tryPlay();
+        document.body.addEventListener(
+          "click",
+          () => {
+            if (vid.paused) tryPlay();
+          },
+          { once: true }
+        );
+
+        vid.addEventListener("ended", () => {
+          cleanupOverlay();
+          launchLevel(levelFile);
+        });
+        skip.addEventListener("click", () => {
+          cleanupOverlay();
+          launchLevel(levelFile);
+        });
+        vid.addEventListener("error", () => {
+          cleanupOverlay();
+          launchLevel(levelFile);
+        });
+
+        function cleanupOverlay() {
+          try {
+            overlay.remove();
+          } catch {}
+        }
+      }
+
+      function returnToMain() {
+        subMenu.style.display = "none";
+        mainMenu.style.display = "flex";
+      }
+
+      /* --- SCP overlay logic --- */
+      function showSCPWarning(file) {
+        const warning = document.getElementById("scp-warning");
+        const confirmBtn = document.getElementById("scp-confirm");
+        const cancelBtn = document.getElementById("scp-cancel");
+        const passInput = document.getElementById("scp-pass");
+        const errorMsg = document.getElementById("scp-error");
+        const siren = document.getElementById("scp-siren");
+
+        warning.style.display = "flex";
+        errorMsg.textContent = "";
+        passInput.value = "";
+
+        try {
+          siren.currentTime = 0;
+          siren.play().catch(() => {});
+        } catch (e) {}
+
+        confirmBtn.onclick = () => {
+          if (passInput.value === SCP_PASSCODE) {
+            try {
+              siren.pause();
+            } catch (e) {}
+            warning.style.display = "none";
+            launchLevel(file);
+          } else {
+            errorMsg.textContent = "Access denied. Invalid containment code.";
+          }
+        };
+
+        cancelBtn.onclick = () => {
+          try {
+            siren.pause();
+          } catch (e) {}
+          warning.style.display = "none";
+          subMenu.style.display = "flex";
+        };
+      }
+
+      /* --- LEVEL LAUNCHER --- */
+      function launchLevel(file) {
+        const iframe = document.createElement("iframe");
+        iframe.src = file;
+        Object.assign(iframe.style, {
+          position: "fixed",
+          top: "0",
+          left: "0",
+          width: "100%",
+          height: "100%",
+          border: "none",
+          zIndex: "1000",
+          background: "#000",
+        });
+        document.body.appendChild(iframe);
+        subMenu.style.display = "none";
+
+        const escHandler = (e) => {
+          if (e.key === "Escape") {
+            try {
+              iframe.remove();
+            } catch {}
+            subMenu.style.display = "flex";
+            document.removeEventListener("keydown", escHandler);
+          }
+        };
+        document.addEventListener("keydown", escHandler);
+      }
+
+      /* --- BOOT --- */
+      setTimeout(bootSequence, 800);
+    </script>
+  </body>
+</html>

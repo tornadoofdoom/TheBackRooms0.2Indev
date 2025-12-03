@@ -1,0 +1,4566 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Level 0 - Endless Office</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        margin: 0;
+        background-color: #000;
+        color: #fff;
+        overflow: hidden;
+        /* Improved text selection for better UX */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      #blocker {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+      #instructions {
+        width: 50%;
+        padding: 20px;
+        background-color: #111;
+        border: 2px solid #333;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(255, 255, 100, 0.2);
+        cursor: pointer;
+      }
+      #instructions h1 {
+        font-size: 2.5em;
+        color: #ffff99;
+        margin-top: 0;
+      }
+      #instructions p {
+        font-size: 1.2em;
+        color: #ccc;
+        line-height: 1.6;
+      }
+      #instructions .key {
+        background-color: #333;
+        color: #fff;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-weight: bold;
+        font-family: "Courier New", Courier, monospace;
+        border: 1px solid #555;
+      }
+
+      /* HUD - Heads Up Display */
+      #hud {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: white;
+        z-index: 100;
+        display: none; /* Hidden until game starts */
+        width: 200px;
+      }
+      .hud-item {
+        margin-bottom: 10px;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #444;
+      }
+      .hud-item label {
+        font-size: 1em;
+        font-weight: bold;
+        color: #ffff99;
+        display: block;
+        margin-bottom: 5px;
+      }
+      .hud-item .hud-label-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .hud-item .hud-label-flex .percent {
+        font-size: 0.9em;
+        color: #ccc;
+      }
+
+      .bar-container {
+        width: 100%;
+        height: 20px;
+        background-color: #333;
+        border-radius: 5px;
+        overflow: hidden;
+        border: 1px solid #555;
+      }
+      #stamina-bar,
+      #sanity-bar,
+      #battery-bar {
+        height: 100%;
+        width: 100%;
+        background-color: #4caf50; /* Green for stamina */
+        transition: width 0.2s linear;
+      }
+      #sanity-bar {
+        background-color: #4c8faf; /* Blue for sanity */
+      }
+      #battery-bar {
+        background-color: #f0e68c; /* Khaki for battery */
+      }
+      #blink-bar {
+        background-color: #a0a0ff; /* Light blue for blink */
+        /* FIX: Added height, initial width, and transition */
+        height: 100%;
+        width: 0%;
+        transition: width 0.1s linear;
+      }
+
+      /* Crosshair */
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 4px;
+        height: 4px;
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 100;
+        display: none;
+      }
+
+      /* Interaction Prompt */
+      #interaction-prompt {
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 10px;
+        font-size: 1.1em;
+        display: none;
+        z-index: 100;
+      }
+      #interaction-prompt .key {
+        background-color: #eee;
+        color: #000;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+
+      /* Inventory Screen */
+      #inventory-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.85);
+        display: none; /* Hidden by default */
+        justify-content: center;
+        align-items: center;
+        z-index: 200;
+      }
+      #inventory-grid {
+        display: grid;
+        /* UPDATED: 5 columns for 20 slots (5x4) */
+        grid-template-columns: repeat(5, 80px);
+        grid-template-rows: repeat(4, 80px);
+        grid-gap: 15px;
+        background-color: #1a1a1a;
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px solid #444;
+      }
+      .inventory-slot {
+        width: 80px;
+        height: 80px;
+        background-color: #333;
+        border: 2px solid #555;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.9em;
+        color: #888;
+        position: relative;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+        overflow: hidden; /* Prevent text overflow */
+        padding: 5px;
+        box-sizing: border-box;
+      }
+      .inventory-slot:hover,
+      .inventory-slot.selected {
+        background-color: #444;
+        border-color: #ffff99;
+      }
+      .inventory-slot .item-name {
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 3px 5px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        text-align: center;
+      }
+      .inventory-slot .item-quantity {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background-color: #ffff99;
+        color: #000;
+        font-weight: bold;
+        padding: 2px 5px;
+        border-radius: 50%;
+        font-size: 0.8em;
+      }
+      #inventory-controls {
+        margin-left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .inventory-button {
+        padding: 12px 20px;
+        background-color: #333;
+        color: #fff;
+        border: 2px solid #555;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1em;
+        transition: background-color 0.2s, border-color 0.2s;
+      }
+      .inventory-button:hover {
+        background-color: #444;
+        border-color: #ffff99;
+      }
+      .inventory-button:disabled {
+        background-color: #222;
+        color: #666;
+        border-color: #444;
+        cursor: not-allowed;
+      }
+
+      /* Hotbar */
+      #hotbar {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: grid;
+        grid-template-columns: repeat(3, 60px);
+        grid-gap: 10px;
+        z-index: 100;
+      }
+      .hotbar-slot {
+        width: 60px;
+        height: 60px;
+        background-color: rgba(51, 51, 51, 0.7);
+        border: 2px solid #555;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #888;
+        font-size: 0.8em;
+        position: relative;
+        overflow: hidden;
+      }
+      .hotbar-slot.selected {
+        border-color: #ffff99;
+        background-color: rgba(68, 68, 66, 0.9);
+      }
+      .hotbar-slot .item-name {
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 0.7em;
+        text-align: center;
+      }
+      .hotbar-slot .hotkey-label {
+        position: absolute;
+        top: 2px;
+        left: 4px;
+        color: #ccc;
+        font-size: 0.9em;
+        font-weight: bold;
+      }
+      .hotbar-slot .item-quantity {
+        position: absolute;
+        bottom: 3px;
+        right: 3px;
+        background-color: #ffff99;
+        color: #000;
+        font-weight: bold;
+        padding: 1px 4px;
+        border-radius: 50%;
+        font-size: 0.7em;
+      }
+
+      /* Game Over / Win Screens */
+      .overlay-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        display: none; /* Hidden by default */
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        z-index: 300;
+        color: #ff4d4d;
+      }
+      .overlay-screen h1 {
+        font-size: 4em;
+        margin: 0;
+      }
+      .overlay-screen p {
+        font-size: 1.5em;
+        color: #ccc;
+      }
+      #game-win-screen {
+        color: #4dff4d;
+      }
+      .restart-button {
+        margin-top: 20px;
+        padding: 15px 30px;
+        font-size: 1.2em;
+        background-color: #333;
+        color: #fff;
+        border: 2px solid #555;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+      }
+      .restart-button:hover {
+        background-color: #444;
+        border-color: #ffff99;
+      }
+    </style>
+    <!-- Importmap for Three.js modules -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="blocker">
+      <div id="instructions">
+        <h1>Level 0: The Endless Office</h1>
+        <p>
+          You've no-clipped out of reality. All that remains is the hum of the
+          fluorescents and the smell of damp carpet.
+        </p>
+        <p>
+          <span class="key">Click to Begin</span>
+        </p>
+        <br />
+        <p>
+          <span class="key">W, A, S, D</span> - Move |
+          <span class="key">Mouse</span> - Look |
+          <span class="key">Space</span> - Jump
+        </p>
+        <p>
+          <span class="key">Shift</span> - Sprint |
+          <span class="key">Ctrl</span> - Crouch | <span class="key">F</span> -
+          Flashlight
+        </p>
+        <p>
+          <span class="key">E</span> - Inventory |
+          <span class="key">1, 2, 3</span> - Hotbar |
+          <span class="key">Q</span> - Use Item
+        </p>
+        <p>
+          <span class="key">B</span> - Blink | <span class="key">Click</span> -
+          Pick Up / Use Door
+        </p>
+      </div>
+    </div>
+
+    <!-- HUD Elements -->
+    <div id="hud">
+      <!-- NEW: Blink HUD Item -->
+      <div class="hud-item" id="blink-bar-container">
+        <label>Blink</label>
+        <div class="bar-container">
+          <div id="blink-bar"></div>
+        </div>
+      </div>
+      <div class="hud-item">
+        <label>Stamina</label>
+        <div class="bar-container">
+          <div id="stamina-bar"></div>
+        </div>
+      </div>
+      <div class="hud-item">
+        <label>Sanity</label>
+        <div class="bar-container">
+          <div id="sanity-bar"></div>
+        </div>
+      </div>
+      <!-- NEW: Battery HUD Item -->
+      <div class="hud-item">
+        <div class="hud-label-flex">
+          <label>Flashlight</label>
+          <span id="battery-level" class="percent">100%</span>
+        </div>
+        <div class="bar-container">
+          <div id="battery-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: Blink Overlay -->
+    <div
+      id="blink-overlay"
+      style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        opacity: 0;
+        display: none;
+        z-index: 999;
+      "
+    ></div>
+
+    <div id="crosshair"></div>
+
+    <div id="interaction-prompt">
+      Press <span class="key">E</span> to pick up
+    </div>
+
+    <!-- Inventory Screen -->
+    <div id="inventory-screen">
+      <div id="inventory-grid">
+        <!-- 20 slots will be generated by JS -->
+      </div>
+      <div id="inventory-controls">
+        <button class="inventory-button" id="inv-use">Use</button>
+        <button class="inventory-button" id="inv-drop">Drop</button>
+        <button class="inventory-button" id="inv-hotbar-1">
+          Move to Hotbar 1
+        </button>
+        <button class="inventory-button" id="inv-hotbar-2">
+          Move to Hotbar 2
+        </button>
+        <button class="inventory-button" id="inv-hotbar-3">
+          Move to Hotbar 3
+        </button>
+      </div>
+    </div>
+
+    <!-- Hotbar -->
+    <div id="hotbar">
+      <div class="hotbar-slot" id="hotbar-0">
+        <span class="hotkey-label">1</span>
+        <span class="item-name"></span>
+        <span class="item-quantity"></span>
+      </div>
+      <div class="hotbar-slot" id="hotbar-1">
+        <span class="hotkey-label">2</span>
+        <span class="item-name"></span>
+        <span class="item-quantity"></span>
+      </div>
+      <div class="hotbar-slot" id="hotbar-2">
+        <span class="hotkey-label">3</span>
+        <span class="item-name"></span>
+        <span class="item-quantity"></span>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="overlay-screen">
+      <div>
+        <h1>You Fell</h1>
+        <p>
+          The pit claims another... <br />Your sanity slips away as you fall
+          into the darkness.
+        </p>
+        <button class="restart-button" id="restart-button-dead">Restart</button>
+      </div>
+    </div>
+
+    <!-- Game Win Screen -->
+    <div id="game-win-screen" class="overlay-screen">
+      <div>
+        <h1>You Escaped...?</h1>
+        <p>
+          You push through the discolored door... <br />...only to find yourself
+          somewhere else.
+        </p>
+        <button class="restart-button" id="restart-button-win">
+          Play Again
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Game Script -->
+    <script type="module">
+      import * as THREE from "three";
+      import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+
+      let camera, scene, renderer, controls;
+      let playerVelocity = new THREE.Vector3();
+      let playerDirection = new THREE.Vector3();
+      let playerBody; // NEW: Player model
+
+      const objects = []; // For collision detection
+      const interactableItems = []; // For item pickup and doors
+
+      let moveForward = false;
+      let moveBackward = false;
+      let moveLeft = false;
+      let moveRight = false;
+      let canJump = false;
+      let isCrouching = false;
+      let isSprinting = false;
+
+      let prevTime = performance.now();
+
+      // Game state
+      let gameRunning = false;
+      let inventoryOpen = false;
+      let gameWon = false;
+      let isRedShiftActive = false;
+      let redShiftActivationChunk = null;
+      const RED_SHIFT_EXIT_DISTANCE = 5;
+
+      // Player stats
+      let playerStamina = 100;
+      let playerSanity = 100;
+      let playerBattery = 100.0; // NEW: Flashlight battery
+      const maxStamina = 100;
+      const maxSanity = 100;
+      const maxBattery = 100.0; // NEW
+      const flashlightDrainRate = 0.5; // NEW: Units per second
+      const batteryRechargeAmount = 50.0; // NEW
+      let sanityDrainTimer = 0;
+
+      // Player physics constants
+      const playerSpeed = 8.0;
+      const playerSprintSpeed = 14.0;
+      const playerCrouchSpeed = 4.0;
+      const playerGravity = 30.0;
+      const playerJumpHeight = 8.0;
+      const playerHeight = 1.8;
+      const playerCrouchHeight = 1.0;
+      const playerRadius = 0.4;
+
+      // NEW: Blink Mechanics
+      const maxBlinkTime = 5.0; // Seconds until forced blink
+      const blinkDuration = 0.3; // Seconds the blink animation lasts
+      let playerBlinkTimer = maxBlinkTime;
+      let isBlinking = false;
+      let blinkAnimationTimer = 0;
+
+      // Maze generation
+      const CHUNK_SIZE = 20;
+      const WALL_HEIGHT = 3;
+      const WALL_THICKNESS = 0.2;
+      const TILE_SIZE = 1;
+
+      // --- User-configurable variables ---
+      const MISSING_TILE_PROBABILITY = 0.08;
+      const CEILING_JUNK_DENSITY = 0.3;
+      const RED_SHIFT_DISTANCE = 20;
+      const CHUNK_DARK_PROBABILITY = 0.1; // NEW: 10% chance for a dark chunk
+      const ROOM_SPAWN_PROBABILITY = 0.05; // NEW: 5% chance per cell for a room
+      const SECURITY_HALLWAY_PROBABILITY = 0.05; // NEW: 5% chance for a security hallway
+
+      // NEW: Item Spawn Chances
+      const ITEM_CHANCE_FLASHLIGHT = 0.1;
+      const ITEM_CHANCE_ALMOND_WATER = 0.2;
+      const ITEM_CHANCE_BATTERY = 0.3;
+
+      // Decal Customization
+      const RANDOM_TORN_WALLPAPER_PROBABILITY = 0.2;
+      const RANDOM_GRAFFITI_PROBABILITY = 0.1;
+      const GUIDE_ARROW_PROBABILITY = 0.95;
+      const TORN_PAPER_MIN_WIDTH = 0.5;
+      const TORN_PAPER_MAX_WIDTH = 4.0;
+      const TORN_PAPER_MIN_HEIGHT = 0.5;
+      const TORN_PAPER_MAX_HEIGHT = 3.0;
+
+      // Special rooms & Exit Logic
+      let exitChunkCoords = null;
+      let exitTriggerMesh = null;
+      let exitSignMesh = null;
+      let exitDoorFrameMesh = null;
+      let exitDoorMesh = null;
+      const MIN_EXIT_DISTANCE_SQ = 5 * 5;
+      const EXIT_SPAWN_PROBABILITY = 0.05;
+
+      // Pitfall
+      const PITFALL_PROBABILITY = 0.2;
+      const PIT_GRID_SIZE = 5;
+      const PIT_PATH_WIDTH = 0.4;
+      const PIT_PATH_HEIGHT = 1.0; // FIX: Was 0.2, make thicker to prevent tunneling
+      const PIT_WALL_COUNT = PIT_GRID_SIZE + 1;
+      const PIT_TOTAL_PATH_WIDTH = PIT_WALL_COUNT * PIT_PATH_WIDTH;
+      const PIT_SIZE = (CHUNK_SIZE - PIT_TOTAL_PATH_WIDTH) / PIT_GRID_SIZE;
+      const PIT_DEPTH = 100;
+
+      let currentChunk = { x: 0, z: 0 };
+      let generatedChunks = new Map();
+      const globalRandom = Math.random;
+
+      // --- NEW: SCP-173 (Statue) Variables ---
+      let scp173Mesh = null;
+      let scp173State = "IDLE"; // 'IDLE', 'HUNTING', 'FROZEN'
+      const scp173DetectionRadius = 40.0; // MODIFIED: Was 30.0 (Now 2 chunks)
+      const scp173Speed = 10.0; // Faster than player sprint
+      const scp173KillRangeSq = 2.0 * 2.0; // 2m kill range
+      let scp173Spawned = false; // NEW: Flag to track if SCP has been spawned
+      const SCP173_TELEPORT_TIMER = 5.0; // MODIFIED: Was 10.0 (User request)
+      let scp173TeleportCooldown = SCP173_TELEPORT_TIMER; // NEW
+      const SCP173_STUCK_TELEPORT_TIMER = 30.0; // NEW: Time until teleporting away when stuck
+      let scp173StuckTimer = SCP173_STUCK_TELEPORT_TIMER; // NEW
+      let scp173LastPosition = new THREE.Vector3(); // NEW
+
+      // --- Helper Vectors ---
+      const _vector = new THREE.Vector3();
+      const moveVectorForward = new THREE.Vector3();
+      const moveVectorRight = new THREE.Vector3();
+
+      // --- DOM Elements ---
+      const blocker = document.getElementById("blocker");
+      const instructions = document.getElementById("instructions");
+      const hud = document.getElementById("hud");
+      const crosshair = document.getElementById("crosshair");
+      const staminaBar = document.getElementById("stamina-bar");
+      const sanityBar = document.getElementById("sanity-bar");
+      const batteryBar = document.getElementById("battery-bar"); // NEW
+      const batteryLevel = document.getElementById("battery-level"); // NEW
+      const blinkBar = document.getElementById("blink-bar"); // NEW
+      const blinkOverlay = document.getElementById("blink-overlay"); // NEW
+      const interactionPrompt = document.getElementById("interaction-prompt");
+
+      const inventoryScreen = document.getElementById("inventory-screen");
+      const inventoryGrid = document.getElementById("inventory-grid");
+      const hotbar = [
+        document.getElementById("hotbar-0"),
+        document.getElementById("hotbar-1"),
+        document.getElementById("hotbar-2"),
+      ];
+      let selectedHotbarSlot = 0;
+
+      const invUseButton = document.getElementById("inv-use");
+      const invDropButton = document.getElementById("inv-drop");
+      const invHotbarButtons = [
+        document.getElementById("inv-hotbar-1"),
+        document.getElementById("inv-hotbar-2"),
+        document.getElementById("inv-hotbar-3"),
+      ];
+
+      const gameOverScreen = document.getElementById("game-over-screen");
+      const gameWinScreen = document.getElementById("game-win-screen");
+      const restartButtonDead = document.getElementById("restart-button-dead");
+      const restartButtonWin = document.getElementById("restart-button-win");
+
+      let flashlight, ambientLight;
+      let audioListener, humSound, scp173AudioScrape; // NEW: scp173AudioScrape
+      let wallpaperMaterial,
+        floorMaterial,
+        ceilingMaterial,
+        deskMaterial,
+        chairMaterial,
+        puddleMaterial,
+        pipeMaterial,
+        exitWallMaterial,
+        doorMaterial; // NEW: Door material
+      let securityDoorMaterial; // NEW
+
+      let graffitiMaterial, tornWallpaperMaterial;
+      let pitPathMaterial, darkPitMaterial, roofMaterial;
+      let concreteMaterial; // NEW: For SCP-173
+
+      // --- Inventory System ---
+      let inventory = new Array(20).fill(null); // UPDATED: 20 slots
+      let hotbarItems = new Array(3).fill(null);
+      let selectedInventorySlot = -1;
+
+      // Item definitions
+      const ITEMS = {
+        flashlight: {
+          name: "Flashlight",
+          stackable: false,
+          use: (item, index, source) => {
+            toggleFlashlight();
+          },
+        },
+        almond_water: {
+          name: "Almond Water",
+          stackable: true,
+          maxStack: 5,
+          use: (item, index, source) => {
+            playerSanity = maxSanity;
+            item.quantity--;
+            if (item.quantity <= 0) {
+              if (source === "inventory") inventory[index] = null;
+              if (source === "hotbar") hotbarItems[index] = null;
+            }
+            updateInventoryUI();
+            updateHotbarUI();
+          },
+        },
+        // NEW: Battery Item
+        battery: {
+          name: "Battery",
+          stackable: true,
+          maxStack: 10,
+          use: (item, index, source) => {
+            playerBattery = Math.min(
+              maxBattery,
+              playerBattery + batteryRechargeAmount
+            );
+            item.quantity--;
+            if (item.quantity <= 0) {
+              if (source === "inventory") inventory[index] = null;
+              if (source === "hotbar") hotbarItems[index] = null;
+            }
+            updateInventoryUI();
+            updateHotbarUI();
+          },
+        },
+      };
+
+      // --- Texture Generation ---
+      function createWallpaperTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext("2d");
+        context.fillStyle = "#C2B280";
+        context.fillRect(0, 0, 512, 512);
+        context.fillStyle = "rgba(0,0,0,0.02)";
+        for (let i = 0; i < 512; i += 8) {
+          context.fillRect(i, 0, 1, 512);
+          context.fillRect(0, i, 512, 1);
+        }
+        for (let i = 0; i < 70; i++) {
+          context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.15 + 0.05})`;
+          context.beginPath();
+          context.arc(
+            Math.random() * 512,
+            Math.random() * 512,
+            Math.random() * 40 + 15,
+            0,
+            Math.PI * 2
+          );
+          context.fill();
+        }
+        context.fillStyle = `rgba(101, 67, 33, ${Math.random() * 0.2 + 0.1})`;
+        context.fillRect(
+          Math.random() * 512,
+          Math.random() * 512,
+          Math.random() * 80 + 40,
+          Math.random() * 80 + 40
+        );
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(4, 2);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function createCarpetTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext("2d");
+        context.fillStyle = "#595142";
+        context.fillRect(0, 0, 512, 512);
+        for (let i = 0; i < 20000; i++) {
+          context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.3})`;
+          context.fillRect(
+            Math.random() * 512,
+            Math.random() * 512,
+            1,
+            Math.random() * 3 + 1
+          );
+          context.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.1})`;
+          context.fillRect(Math.random() * 512, Math.random() * 512, 1, 1);
+        }
+        for (let i = 0; i < 30; i++) {
+          context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2 + 0.1})`;
+          context.beginPath();
+          context.arc(
+            Math.random() * 512,
+            Math.random() * 512,
+            Math.random() * 60 + 30,
+            0,
+            Math.PI * 2
+          );
+          context.fill();
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(5, 5);
+        return texture;
+      }
+
+      function createCeilingTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+        context.fillStyle = "#c7c7c7";
+        context.fillRect(0, 0, 256, 256);
+        context.strokeStyle = "#888";
+        context.lineWidth = 8;
+        context.strokeRect(0, 0, 256, 256);
+        for (let i = 0; i < 20; i++) {
+          context.fillStyle = `rgba(139, 69, 19, ${Math.random() * 0.1})`; // Brownish
+          context.beginPath();
+          context.arc(
+            Math.random() * 256,
+            Math.random() * 256,
+            Math.random() * 30 + 10,
+            0,
+            Math.PI * 2
+          );
+          context.fill();
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        return texture;
+      }
+
+      function createTornWallpaperTexture(random) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+        context.clearRect(0, 0, 256, 256);
+        const tearColor = "#5c3a21";
+        context.fillStyle = tearColor;
+        context.beginPath();
+        const startX = random() * 156 + 50;
+        const startY = random() * 156 + 50;
+        context.moveTo(startX, startY);
+        for (let j = 1; j < 10; j++) {
+          context.lineTo(
+            startX + (random() - 0.5) * 200,
+            startY + (random() - 0.5) * 200
+          );
+        }
+        context.closePath();
+        context.fill();
+        context.strokeStyle = "rgba(92, 58, 33, 0.7)";
+        context.lineWidth = 4;
+        context.stroke();
+        context.strokeStyle = "rgba(240, 234, 218, 0.3)";
+        context.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+          context.save();
+          context.translate((random() - 0.5) * 2, (random() - 0.5) * 2);
+          context.stroke();
+          context.restore();
+        }
+        context.strokeStyle = "#f0eada";
+        context.lineWidth = 1;
+        context.stroke();
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function createGraffitiTexture(random, targetDirection = null) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+        context.clearRect(0, 0, 256, 256);
+        context.strokeStyle = `rgba(10, 10, 10, ${random() * 0.2 + 0.7})`;
+        context.lineWidth = random() * 6 + 6;
+        context.lineCap = "round";
+        if (targetDirection) {
+          const angle = Math.atan2(-targetDirection.z, targetDirection.x);
+          const arrowCount = random() * 5 + 3;
+          for (let i = 0; i < arrowCount; i++) {
+            const startX = random() * 156 + 50;
+            const startY = random() * 156 + 50;
+            const arrowLength = 40 + random() * 30;
+            const jitterAngle = angle + (random() - 0.5) * 0.7;
+            const endX = startX + Math.cos(jitterAngle) * arrowLength;
+            const endY = startY - Math.sin(jitterAngle) * arrowLength;
+            context.beginPath();
+            context.moveTo(startX, startY);
+            context.lineTo(endX, endY);
+            const arrowSize = 20;
+            context.lineTo(
+              endX - arrowSize * Math.cos(jitterAngle - Math.PI / 6),
+              endY + arrowSize * Math.sin(jitterAngle - Math.PI / 6)
+            );
+            context.moveTo(endX, endY);
+            context.lineTo(
+              endX - arrowSize * Math.cos(jitterAngle + Math.PI / 6),
+              endY + arrowSize * Math.sin(jitterAngle + Math.PI / 6)
+            );
+            context.stroke();
+          }
+        } else {
+          for (let i = 0; i < random() * 3 + 1; i++) {
+            context.beginPath();
+            const startX = random() * 200 + 28;
+            const startY = random() * 200 + 28;
+            context.moveTo(startX, startY);
+            context.quadraticCurveTo(
+              random() * 256,
+              random() * 256,
+              random() * 200 + 28,
+              random() * 200 + 28
+            );
+            context.stroke();
+          }
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      // NEW: Texture for SCP-173's face
+      function createSCP173FaceTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+
+        // Base concrete color
+        context.fillStyle = "#9c9c9c";
+        context.fillRect(0, 0, 256, 256);
+
+        // Black outline for eyes
+        context.fillStyle = "#000000";
+        context.beginPath();
+        context.arc(85, 100, 40, 0, Math.PI * 2); // Left eye
+        context.fill();
+        context.beginPath();
+        context.arc(171, 100, 40, 0, Math.PI * 2); // Right eye
+        context.fill();
+
+        // White of eyes
+        context.fillStyle = "#FFFFFF";
+        context.beginPath();
+        context.arc(85, 100, 35, 0, Math.PI * 2);
+        context.fill();
+        context.beginPath();
+        context.arc(171, 100, 35, 0, Math.PI * 2);
+        context.fill();
+
+        // Pupils (looking forward)
+        context.fillStyle = "#000000";
+        context.beginPath();
+        context.arc(85, 100, 10, 0, Math.PI * 2);
+        context.fill();
+        context.beginPath();
+        context.arc(171, 100, 10, 0, Math.PI * 2);
+        context.fill();
+
+        // Red markings
+        context.fillStyle = "#CC0000";
+        // Red around mouth area
+        context.beginPath();
+        context.arc(128, 180, 50, 0, Math.PI * 2);
+        context.fill();
+
+        // Black mouth line
+        context.fillStyle = "#000000";
+        context.fillRect(100, 178, 56, 4);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      init();
+
+      function init() {
+        // --- Scene Setup ---
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          100
+        );
+        camera.position.set(1, playerHeight, 1);
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a10);
+        scene.fog = new THREE.Fog(0x1a1a10, 5, 25);
+
+        // --- NEW: Player Body ---
+        playerBody = createPlayerBody();
+        camera.add(playerBody); // Attach body to camera
+
+        // --- Lighting ---
+        ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        // Flashlight
+        flashlight = new THREE.SpotLight(
+          0xffffee,
+          0.0,
+          30,
+          Math.PI / 6,
+          0.3,
+          1.0
+        );
+        flashlight.position.set(0, 0, 0);
+        flashlight.target.position.set(0, 0, -1);
+        camera.add(flashlight);
+        camera.add(flashlight.target);
+        scene.add(camera);
+
+        // --- Audio ---
+        audioListener = new THREE.AudioListener();
+        camera.add(audioListener);
+
+        const audioContext = audioListener.context;
+        if (audioContext.state === "suspended") {
+          console.log("AudioContext suspended. Waiting for user interaction.");
+        }
+        const resumeAudio = () => {
+          if (audioContext.state === "suspended") {
+            audioContext
+              .resume()
+              .then(() => {
+                console.log("AudioContext resumed!");
+                if (!humSound.isPlaying && controls.isLocked) {
+                  humSound.play();
+                  humSound.setVolume(0.05);
+                }
+              })
+              .catch((e) => console.error("Error resuming AudioContext:", e));
+          }
+          document.body.removeEventListener("click", resumeAudio);
+          document.body.removeEventListener("keydown", resumeAudio);
+        };
+        document.body.addEventListener("click", resumeAudio);
+        document.body.addEventListener("keydown", resumeAudio);
+
+        // Hum sound
+        let stream = audioContext.createMediaStreamDestination();
+        let audioSource = audioContext.createMediaStreamSource(stream.stream);
+        humSound = new THREE.Audio(audioListener);
+        humSound.setNodeSource(audioSource);
+        humSound.setVolume(0.0);
+        const oscillator1 = audioContext.createOscillator();
+        oscillator1.type = "sine";
+        oscillator1.frequency.setValueAtTime(60, audioContext.currentTime);
+        const gain1 = audioContext.createGain();
+        gain1.gain.setValueAtTime(0.3, audioContext.currentTime);
+        const oscillator2 = audioContext.createOscillator();
+        oscillator2.type = "sine";
+        oscillator2.frequency.setValueAtTime(120, audioContext.currentTime);
+        const gain2 = audioContext.createGain();
+        gain2.gain.setValueAtTime(0.1, audioContext.currentTime);
+        const oscillator3 = audioContext.createOscillator();
+        oscillator3.type = "sine";
+        oscillator3.frequency.setValueAtTime(180, audioContext.currentTime);
+        const gain3 = audioContext.createGain();
+        gain3.gain.setValueAtTime(0.05, audioContext.currentTime);
+        oscillator1.connect(gain1).connect(stream);
+        oscillator2.connect(gain2).connect(stream);
+        oscillator3.connect(gain3).connect(stream);
+        oscillator1.start();
+        oscillator2.start();
+        oscillator3.start();
+
+        // NEW: SCP-173 Scrape Sound
+        stream = audioContext.createMediaStreamDestination();
+        audioSource = audioContext.createMediaStreamSource(stream.stream);
+        scp173AudioScrape = new THREE.Audio(audioListener);
+        scp173AudioScrape.setNodeSource(audioSource);
+        scp173AudioScrape.setVolume(1.0); // Will be controlled by distance
+        scp173AudioScrape.setLoop(true);
+        // Create scraping sound (low-pass filtered white noise)
+        const bufferSize = audioContext.sampleRate * 2; // 2 seconds of noise
+        const noiseBuffer = audioContext.createBuffer(
+          1,
+          bufferSize,
+          audioContext.sampleRate
+        );
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1; // White noise
+        }
+        const noiseSource = audioContext.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+        noiseSource.loop = true;
+        const biquadFilter = audioContext.createBiquadFilter();
+        biquadFilter.type = "lowpass";
+        biquadFilter.frequency.setValueAtTime(400, audioContext.currentTime); // Low, gravelly
+        biquadFilter.Q.setValueAtTime(10, audioContext.currentTime);
+        noiseSource.connect(biquadFilter).connect(stream);
+        noiseSource.start();
+
+        // --- Initialize Materials ---
+        wallpaperMaterial = new THREE.MeshStandardMaterial({
+          map: createWallpaperTexture(),
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+        floorMaterial = new THREE.MeshStandardMaterial({
+          map: createCarpetTexture(),
+          roughness: 0.9,
+          metalness: 0.0,
+        });
+        darkPitMaterial = floorMaterial.clone();
+        darkPitMaterial.color.lerp(new THREE.Color(0x000000), 0.7);
+        ceilingMaterial = new THREE.MeshStandardMaterial({
+          map: createCeilingTexture(),
+          roughness: 0.9,
+          metalness: 0.0,
+        });
+        roofMaterial = new THREE.MeshStandardMaterial({
+          color: 0x222222,
+          roughness: 0.9,
+          side: THREE.DoubleSide,
+        });
+        pitPathMaterial = new THREE.MeshStandardMaterial({
+          map: createCeilingTexture(),
+          color: 0xaaaaaa,
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+        deskMaterial = new THREE.MeshStandardMaterial({
+          color: 0x5c3a21,
+          roughness: 0.7,
+          metalness: 0.0,
+        });
+        chairMaterial = new THREE.MeshStandardMaterial({
+          color: 0x333333,
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+        puddleMaterial = new THREE.MeshStandardMaterial({
+          color: 0x1a1a1a,
+          transparent: true,
+          opacity: 0.6,
+          roughness: 0.1,
+          metalness: 0.0,
+          side: THREE.DoubleSide,
+        });
+        pipeMaterial = new THREE.MeshStandardMaterial({
+          color: 0xcccccc,
+          roughness: 0.6,
+          metalness: 0.2,
+        });
+        exitWallMaterial = new THREE.MeshStandardMaterial({
+          color: 0xd2c290,
+          roughness: 0.9,
+          metalness: 0.0,
+        });
+        // NEW: Door Material
+        doorMaterial = new THREE.MeshStandardMaterial({
+          color: 0x8a6e4b, // Worn wood color
+          roughness: 0.8,
+          metalness: 0.0,
+        });
+        // NEW: Security Door Material
+        securityDoorMaterial = new THREE.MeshStandardMaterial({
+          color: 0x777788,
+          metalness: 0.9,
+          roughness: 0.4,
+        });
+        // NEW: Concrete Material
+        concreteMaterial = new THREE.MeshStandardMaterial({
+          color: 0x9c9c9c,
+          roughness: 0.9,
+          metalness: 0.1,
+        });
+
+        // Decal Materials
+        graffitiMaterial = new THREE.MeshStandardMaterial({
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -100,
+          polygonOffsetUnits: -100,
+          roughness: 0.9,
+          metalness: 0.0,
+        });
+        tornWallpaperMaterial = new THREE.MeshStandardMaterial({
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -100,
+          polygonOffsetUnits: -100,
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+
+        // Initial chunk generation
+        generateChunk(0, 0);
+        updateVisibleChunks(); // Ensure initial visibility is set
+
+        // --- Renderer ---
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- Controls ---
+        controls = new PointerLockControls(camera, renderer.domElement);
+
+        instructions.addEventListener("click", () => {
+          controls.lock();
+          resumeAudio();
+        });
+
+        controls.addEventListener("lock", () => {
+          instructions.style.display = "none";
+          blocker.style.display = "none";
+          hud.style.display = "block";
+          crosshair.style.display = "block";
+          hotbar[0].parentElement.style.display = "grid";
+          gameRunning = true;
+          if (!humSound.isPlaying && audioContext.state === "running") {
+            humSound.play();
+          }
+          if (audioContext.state === "running") {
+            humSound.setVolume(0.05);
+          }
+          prevTime = performance.now();
+          animate();
+        });
+
+        controls.addEventListener("unlock", () => {
+          if (gameRunning && !inventoryOpen) {
+            blocker.style.display = "flex";
+            instructions.style.display = "block";
+            instructions.style.cursor = "default";
+            instructions.innerHTML = "<h1>Paused</h1><p>Click to resume</p>";
+            gameRunning = false;
+            humSound.setVolume(0.0);
+            if (scp173AudioScrape.isPlaying) scp173AudioScrape.stop(); // Stop sound on pause
+          } else if (!gameRunning && inventoryOpen) {
+            blocker.style.display = "none";
+            instructions.style.display = "none";
+          }
+          hud.style.display = "none";
+          crosshair.style.display = "none";
+          hotbar[0].parentElement.style.display = "none";
+        });
+
+        // --- Event Listeners ---
+        document.addEventListener("keydown", onKeyDown);
+        document.addEventListener("keyup", onKeyUp);
+        document.addEventListener("mousedown", onMouseDown);
+        window.addEventListener("resize", onWindowResize);
+
+        // Inventory UI Listeners
+        inventoryGrid.addEventListener("click", (e) => {
+          if (e.target.classList.contains("inventory-slot")) {
+            const index = parseInt(e.target.dataset.index);
+            selectInventorySlot(index);
+          }
+        });
+
+        invUseButton.addEventListener("click", useInventoryItem);
+        invDropButton.addEventListener("click", dropInventoryItem);
+        invHotbarButtons.forEach((button, index) => {
+          button.addEventListener("click", () => moveToHotbar(index));
+        });
+
+        // Hotbar selection
+        selectHotbarSlot(0);
+
+        // Restart buttons
+        restartButtonDead.addEventListener("click", () =>
+          window.location.reload()
+        );
+        restartButtonWin.addEventListener("click", () =>
+          window.location.reload()
+        );
+
+        // Populate inventory grid
+        for (let i = 0; i < 20; i++) {
+          // UPDATED: 20 slots
+          const slot = document.createElement("div");
+          slot.classList.add("inventory-slot");
+          slot.dataset.index = i;
+          slot.innerHTML = `[Empty]`;
+          inventoryGrid.appendChild(slot);
+        }
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function onKeyDown(event) {
+        if (
+          !gameRunning &&
+          event.code !== "Escape" &&
+          !(event.code === "KeyE" && inventoryOpen)
+        )
+          return;
+
+        switch (event.code) {
+          case "KeyW":
+            moveForward = true;
+            break;
+          case "KeyA":
+            moveLeft = true;
+            break;
+          case "KeyS":
+            moveBackward = true;
+            break;
+          case "KeyD":
+            moveRight = true;
+            break;
+          case "Space":
+            if (canJump) playerVelocity.y += playerJumpHeight;
+            canJump = false;
+            break;
+          case "ControlLeft":
+            isCrouching = true;
+            playerBody.position.y = -playerCrouchHeight + 0.4; // NEW: Adjust body
+            break;
+          case "ShiftLeft":
+            isSprinting = true;
+            break;
+          case "KeyF":
+            // Check for battery
+            if (playerBattery > 0 || flashlight.intensity > 0) {
+              toggleFlashlight();
+            }
+            break;
+          case "KeyE":
+            event.preventDefault();
+            toggleInventory();
+            break;
+          case "KeyQ":
+            useHotbarItem();
+            break;
+          // NEW: Blink Key
+          case "KeyB":
+            if (!isBlinking) {
+              startBlink(false);
+            }
+            break;
+          case "Digit1":
+            selectHotbarSlot(0);
+            break;
+          case "Digit2":
+            selectHotbarSlot(1);
+            break;
+          case "Digit3":
+            selectHotbarSlot(2);
+            break;
+        }
+      }
+
+      function onKeyUp(event) {
+        switch (event.code) {
+          case "KeyW":
+            moveForward = false;
+            break;
+          case "KeyA":
+            moveLeft = false;
+            break;
+          case "KeyS":
+            moveBackward = false;
+            break;
+          case "KeyD":
+            moveRight = false;
+            break;
+          case "ControlLeft":
+            isCrouching = false;
+            playerBody.position.y = -playerHeight + 0.4; // NEW: Adjust body
+            break;
+          case "ShiftLeft":
+            isSprinting = false;
+            break;
+        }
+      }
+
+      function onMouseDown(event) {
+        if (!gameRunning || inventoryOpen) return;
+
+        // Check for item pickup or door use
+        const raycaster = new THREE.Raycaster(
+          camera.position,
+          camera.getWorldDirection(new THREE.Vector3())
+        );
+        const intersects = raycaster.intersectObjects(interactableItems, true); // NEW: Check recursively
+
+        if (intersects.length > 0 && intersects[0].distance < 3) {
+          let itemObject = intersects[0].object;
+
+          // Check if we clicked a part of the door
+          if (itemObject.userData.isDoorPart) {
+            itemObject = itemObject.parent; // Get the main door group
+          }
+
+          if (itemObject.userData.itemName) {
+            pickupItem(itemObject);
+          } else if (itemObject.userData.isDoor) {
+            // NEW: Toggle door
+            toggleDoor(itemObject);
+          }
+        }
+      }
+
+      // --- Maze Generation ---
+      function generateChunk(chunkX, chunkZ) {
+        const chunkKey = `${chunkX},${chunkZ}`;
+        if (generatedChunks.has(chunkKey)) return;
+
+        console.log("Generating chunk:", chunkKey);
+
+        const chunkGroup = new THREE.Group();
+        chunkGroup.position.set(chunkX * CHUNK_SIZE, 0, chunkZ * CHUNK_SIZE);
+        chunkGroup.userData.disposables = [];
+        scene.add(chunkGroup);
+        generatedChunks.set(chunkKey, chunkGroup);
+
+        const seed = chunkX * 1000 + chunkZ;
+        const random = createSeededRandom(seed);
+
+        // NEW: Check for dark chunk
+        const isDarkChunk = random() < CHUNK_DARK_PROBABILITY;
+
+        const roofGeometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE);
+        roofGeometry.rotateX(-Math.PI / 2);
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.position.set(CHUNK_SIZE / 2, WALL_HEIGHT + 1.0, CHUNK_SIZE / 2);
+        roof.receiveShadow = true;
+        chunkGroup.add(roof);
+
+        const isStartChunk = chunkX === 0 && chunkZ === 0;
+        let isExitChunk = false;
+        const shouldBePitfall =
+          globalRandom() < PITFALL_PROBABILITY && !isStartChunk;
+
+        const distanceFromSpawnSq = chunkX * chunkX + chunkZ * chunkZ;
+        if (
+          !exitChunkCoords &&
+          !shouldBePitfall &&
+          !isStartChunk &&
+          distanceFromSpawnSq > MIN_EXIT_DISTANCE_SQ &&
+          globalRandom() < EXIT_SPAWN_PROBABILITY
+        ) {
+          isExitChunk = true;
+          exitChunkCoords = { x: chunkX, z: chunkZ };
+        }
+
+        // NEW: Check for Security Hallway
+        const shouldBeSecurityHallway =
+          globalRandom() < SECURITY_HALLWAY_PROBABILITY &&
+          !isStartChunk &&
+          !isExitChunk &&
+          !shouldBePitfall;
+
+        if (shouldBeSecurityHallway && !isExitChunk) {
+          console.log(">>> Generating Security Hallway for chunk:", chunkKey);
+          generateSecurityHallway(chunkGroup, random, isDarkChunk);
+          chunkGroup.userData.isSecurityHallway = true;
+          // Fall through to spawn items/SCP, but skip maze gen
+        }
+
+        if (shouldBePitfall && !isExitChunk) {
+          console.log(">>> Generating Pitfall room for chunk:", chunkKey);
+          generatePitfallRoom(
+            chunkGroup,
+            random,
+            wallpaperMaterial,
+            isDarkChunk
+          ); // NEW: pass isDarkChunk
+          chunkGroup.userData.isPitfallChunk = true;
+          return;
+        }
+        if (isExitChunk) {
+          console.log(">>> Generating Exit room for chunk:", chunkKey);
+          generateExitRoom(chunkGroup, random);
+          chunkGroup.userData.isExitChunk = true;
+        }
+
+        if (!shouldBePitfall) {
+          // FIX: Use a thicker BoxGeometry for the floor to prevent tunneling
+          const floorGeometry = new THREE.BoxGeometry(
+            CHUNK_SIZE,
+            1.0,
+            CHUNK_SIZE
+          );
+          // floorGeometry.rotateX(-Math.PI / 2); // No longer needed
+          floorGeometry.computeBoundingBox();
+          const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+          floor.position.set(CHUNK_SIZE / 2, -0.5, CHUNK_SIZE / 2); // Position center at y=-0.5 so top is at y=0
+          floor.receiveShadow = true;
+          chunkGroup.add(floor);
+          objects.push(floor);
+        }
+
+        if (!isExitChunk && !shouldBePitfall && !shouldBeSecurityHallway) {
+          // MODIFIED
+          for (let i = 0; i < 5; i++) {
+            if (random() < 0.2) {
+              const puddleGeo = new THREE.CircleGeometry(
+                random() * 0.8 + 0.3,
+                16
+              );
+              puddleGeo.rotateX(-Math.PI / 2);
+              const puddle = new THREE.Mesh(puddleGeo, puddleMaterial);
+              const edge = Math.floor(random() * 4);
+              let px, pz;
+              const offset = 0.5;
+              if (edge === 0) {
+                px = offset;
+                pz = random() * CHUNK_SIZE;
+              } // West
+              else if (edge === 1) {
+                px = CHUNK_SIZE - offset;
+                pz = random() * CHUNK_SIZE;
+              } // East
+              else if (edge === 2) {
+                pz = offset;
+                px = random() * CHUNK_SIZE;
+              } // South
+              else {
+                pz = CHUNK_SIZE - offset;
+                px = random() * CHUNK_SIZE;
+              } // South
+              puddle.position.set(px, 0.01, pz);
+              chunkGroup.add(puddle);
+            }
+          }
+        }
+
+        if (!shouldBePitfall) {
+          const ceiling = new THREE.Group();
+          chunkGroup.add(ceiling);
+
+          for (let x = 0; x < CHUNK_SIZE; x += TILE_SIZE) {
+            for (let z = 0; z < CHUNK_SIZE; z += TILE_SIZE) {
+              const isExitCenterArea =
+                isExitChunk &&
+                x > CHUNK_SIZE / 2 - 2 &&
+                x < CHUNK_SIZE / 2 + 1 &&
+                z < 3;
+              if (!isExitCenterArea) {
+                const missingTile = random() < MISSING_TILE_PROBABILITY;
+                if (missingTile) {
+                  if (random() < CEILING_JUNK_DENSITY) {
+                    const pipeLength = TILE_SIZE * (random() * 2 + 1);
+                    const pipeGeo = new THREE.CylinderGeometry(
+                      0.05,
+                      0.05,
+                      pipeLength,
+                      8
+                    );
+                    const pipe = new THREE.Mesh(pipeGeo, pipeMaterial);
+                    pipe.position.set(
+                      x + TILE_SIZE / 2,
+                      WALL_HEIGHT + 0.3,
+                      z + TILE_SIZE / 2
+                    );
+                    if (random() < 0.5) pipe.rotateY(Math.PI / 2);
+                    ceiling.add(pipe);
+                  }
+                  continue;
+                }
+
+                const tileGeo = new THREE.BoxGeometry(
+                  TILE_SIZE,
+                  0.1,
+                  TILE_SIZE
+                );
+                const tile = new THREE.Mesh(tileGeo, ceilingMaterial);
+                tile.position.set(
+                  x + TILE_SIZE / 2,
+                  WALL_HEIGHT,
+                  z + TILE_SIZE / 2
+                );
+                tile.receiveShadow = true;
+                ceiling.add(tile);
+
+                // Add Light (unless dark chunk)
+                if (random() < 0.015 && !isDarkChunk) {
+                  // MODIFIED
+                  createFluorescentLight(
+                    ceiling,
+                    x + TILE_SIZE / 2,
+                    z + TILE_SIZE / 2
+                  );
+                }
+              } else if (isExitChunk) {
+                if (x < CHUNK_SIZE / 2 - 1 || x > CHUNK_SIZE / 2 || z > 1) {
+                  const tileGeo = new THREE.BoxGeometry(
+                    TILE_SIZE,
+                    0.1,
+                    TILE_SIZE
+                  );
+                  const tile = new THREE.Mesh(tileGeo, ceilingMaterial);
+                  tile.position.set(
+                    x + TILE_SIZE / 2,
+                    WALL_HEIGHT,
+                    z + TILE_SIZE / 2
+                  );
+                  tile.receiveShadow = true;
+                  ceiling.add(tile);
+                }
+              }
+            }
+          }
+        }
+
+        if (!shouldBePitfall && !shouldBeSecurityHallway) {
+          // MODIFIED
+          if (!isExitChunk) {
+            const gridW = 5;
+            const gridH = 5;
+            const cellSize = CHUNK_SIZE / gridW;
+            const wallMeshesMap = new Map();
+
+            for (let z = 0; z < gridH; z++) {
+              for (let x = 0; x < gridW; x++) {
+                if (x < gridW - 1) wallMeshesMap.set(`${x},${z},x`, true);
+                if (z < gridH - 1) wallMeshesMap.set(`${x},${z},z`, true);
+              }
+            }
+
+            const visited = new Set();
+            const stackCarve = [{ x: 0, z: 0 }];
+            visited.add("0,0");
+            let internalPathCells = new Set();
+            internalPathCells.add("0,0");
+
+            while (stackCarve.length > 0) {
+              const current = stackCarve[stackCarve.length - 1];
+              const { x, z } = current;
+              const directions = [
+                [1, 0, "x"],
+                [-1, 0, "x"],
+                [0, 1, "z"],
+                [0, -1, "z"],
+              ];
+              directions.sort(() => random() - 0.5);
+              let foundNeighbor = false;
+              for (const [dx, dz, dir] of directions) {
+                const nx = x + dx;
+                const nz = z + dz;
+                if (
+                  nx >= 0 &&
+                  nx < gridW &&
+                  nz >= 0 &&
+                  nz < gridH &&
+                  !visited.has(`${nx},${nz}`)
+                ) {
+                  visited.add(`${nx},${nz}`);
+                  internalPathCells.add(`${nx},${nz}`);
+                  stackCarve.push({ x: nx, z: nz });
+                  let wallKeyToRemove;
+                  if (dir === "x")
+                    wallKeyToRemove = `${Math.min(x, nx)},${z},x`;
+                  else wallKeyToRemove = `${x},${Math.min(z, nz)},z`;
+                  wallMeshesMap.delete(wallKeyToRemove);
+                  foundNeighbor = true;
+                  break;
+                }
+              }
+              if (!foundNeighbor) stackCarve.pop();
+            }
+
+            wallMeshesMap.forEach((_, key) => {
+              const [xStr, zStr, dir] = key.split(",");
+              const x = parseInt(xStr);
+              const z = parseInt(zStr);
+              let wall;
+              let graffitiOffset = 0.05;
+              let graffitiSize = [cellSize * 0.8, WALL_HEIGHT * 0.8];
+              if (dir === "x") {
+                wall = createWall(
+                  WALL_THICKNESS,
+                  WALL_HEIGHT,
+                  cellSize,
+                  wallpaperMaterial
+                );
+                wall.position.set(
+                  (x + 1) * cellSize,
+                  WALL_HEIGHT / 2,
+                  z * cellSize + cellSize / 2
+                );
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x - graffitiOffset,
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, -Math.PI / 2, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x + graffitiOffset,
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, Math.PI / 2, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                wall = createWall(
+                  cellSize,
+                  WALL_HEIGHT,
+                  WALL_THICKNESS,
+                  wallpaperMaterial
+                );
+                wall.position.set(
+                  x * cellSize + cellSize / 2,
+                  WALL_HEIGHT / 2,
+                  (z + 1) * cellSize
+                );
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z - graffitiOffset
+                  ),
+                  new THREE.Vector3(0, 0, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z + graffitiOffset
+                  ),
+                  new THREE.Vector3(0, Math.PI, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              }
+              chunkGroup.add(wall);
+              objects.push(wall);
+            });
+
+            const openings = { north: 0, south: 0, west: 0, east: 0 };
+            let graffitiOffset = 0.05;
+            let graffitiSize = [cellSize * 0.8, WALL_HEIGHT * 0.8];
+            for (let x = 0; x < gridW; x++) {
+              const pathTouchesBoundary = internalPathCells.has(`${x},0`);
+              if (!pathTouchesBoundary) {
+                const wall = createWall(
+                  cellSize,
+                  WALL_HEIGHT,
+                  WALL_THICKNESS,
+                  wallpaperMaterial
+                );
+                wall.position.set(
+                  x * cellSize + cellSize / 2,
+                  WALL_HEIGHT / 2,
+                  0
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z + graffitiOffset
+                  ),
+                  new THREE.Vector3(0, Math.PI, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.north++;
+              }
+            }
+            for (let x = 0; x < gridW; x++) {
+              const pathTouchesBoundary = internalPathCells.has(
+                `${x},${gridH - 1}`
+              );
+              if (!pathTouchesBoundary) {
+                const wall = createWall(
+                  cellSize,
+                  WALL_HEIGHT,
+                  WALL_THICKNESS,
+                  wallpaperMaterial
+                );
+                wall.position.set(
+                  x * cellSize + cellSize / 2,
+                  WALL_HEIGHT / 2,
+                  CHUNK_SIZE
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z - graffitiOffset
+                  ),
+                  new THREE.Vector3(0, 0, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.south++;
+              }
+            }
+            for (let z = 0; z < gridH; z++) {
+              const pathTouchesBoundary = internalPathCells.has(`0,${z}`);
+              if (!pathTouchesBoundary) {
+                const wall = createWall(
+                  WALL_THICKNESS,
+                  WALL_HEIGHT,
+                  cellSize,
+                  wallpaperMaterial
+                );
+                wall.position.set(
+                  0,
+                  WALL_HEIGHT / 2,
+                  z * cellSize + cellSize / 2
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x + graffitiOffset,
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, Math.PI / 2, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.west++;
+              }
+            }
+            for (let z = 0; z < gridH; z++) {
+              const pathTouchesBoundary = internalPathCells.has(
+                `${gridW - 1},${z}`
+              );
+              if (!pathTouchesBoundary) {
+                const wall = createWall(
+                  WALL_THICKNESS,
+                  WALL_HEIGHT,
+                  cellSize,
+                  wallpaperMaterial
+                );
+                wall.position.set(
+                  CHUNK_SIZE,
+                  WALL_HEIGHT / 2,
+                  z * cellSize + cellSize / 2
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x - graffitiOffset,
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, -Math.PI / 2, 0),
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.east++;
+              }
+            }
+
+            if (openings.north === 0)
+              forceOpening(chunkGroup, "north", gridW, cellSize, random);
+            if (openings.south === 0)
+              forceOpening(chunkGroup, "south", gridW, cellSize, random);
+            if (openings.west === 0)
+              forceOpening(chunkGroup, "west", gridH, cellSize, random);
+            if (openings.east === 0)
+              forceOpening(chunkGroup, "east", gridH, cellSize, random);
+
+            // Add Props
+            internalPathCells.forEach((cellKey) => {
+              const [xStr, zStr] = cellKey.split(",");
+              const x = parseInt(xStr);
+              const z = parseInt(zStr);
+              const cellCenterX = x * cellSize + cellSize / 2;
+              const cellCenterZ = z * cellSize + cellSize / 2;
+
+              // NEW: Chance to spawn a room
+              if (random() < ROOM_SPAWN_PROBABILITY) {
+                createRoomAndDoor(
+                  chunkGroup,
+                  new THREE.Vector3(cellCenterX, 0, cellCenterZ),
+                  random,
+                  cellSize
+                );
+              }
+              // Original prop logic
+              else if (random() < 0.1) {
+                if (random() < 0.5) {
+                  const desk = createDesk();
+                  desk.position.set(cellCenterX, 0, cellCenterZ);
+                  desk.rotateY(random() * Math.PI * 2);
+                  chunkGroup.add(desk);
+                  objects.push(desk);
+                } else {
+                  const chair = createChair();
+                  chair.position.set(cellCenterX, 0, cellCenterZ);
+                  chair.rotateY(random() * Math.PI * 2);
+                  chunkGroup.add(chair);
+                  objects.push(chair);
+                }
+              }
+            });
+          } else {
+            // Is Exit Chunk
+            const northWallLeft = createWall(
+              CHUNK_SIZE / 2 - 0.75,
+              WALL_HEIGHT,
+              WALL_THICKNESS,
+              exitWallMaterial
+            );
+            northWallLeft.position.set(
+              CHUNK_SIZE / 4 - 0.375,
+              WALL_HEIGHT / 2,
+              0
+            );
+            chunkGroup.add(northWallLeft);
+            objects.push(northWallLeft);
+            const northWallRight = createWall(
+              CHUNK_SIZE / 2 - 0.75,
+              WALL_HEIGHT,
+              WALL_THICKNESS,
+              exitWallMaterial
+            );
+            northWallRight.position.set(
+              (CHUNK_SIZE * 3) / 4 + 0.375,
+              WALL_HEIGHT / 2,
+              0
+            );
+            chunkGroup.add(northWallRight);
+            objects.push(northWallRight);
+
+            const southWall = createWall(
+              CHUNK_SIZE,
+              WALL_HEIGHT,
+              WALL_THICKNESS,
+              exitWallMaterial
+            );
+            southWall.position.set(CHUNK_SIZE / 2, WALL_HEIGHT / 2, CHUNK_SIZE);
+            chunkGroup.add(southWall);
+            objects.push(southWall);
+            const westWall = createWall(
+              WALL_THICKNESS,
+              WALL_HEIGHT,
+              CHUNK_SIZE,
+              exitWallMaterial
+            );
+            westWall.position.set(0, WALL_HEIGHT / 2, CHUNK_SIZE / 2);
+            chunkGroup.add(westWall);
+            objects.push(westWall);
+
+            // --- FIX STARTS HERE ---
+            const eastWall = createWall(
+              WALL_THICKNESS,
+              WALL_HEIGHT,
+              CHUNK_SIZE,
+              exitWallMaterial
+            ); // <-- Added );
+            eastWall.position.set(CHUNK_SIZE, WALL_HEIGHT / 2, CHUNK_SIZE / 2); // <-- FIX: Added this line
+            chunkGroup.add(eastWall); // <-- Added this line
+            objects.push(eastWall); // <-- Added this line
+
+            // --- FIX ENDS HERE ---
+          }
+        }
+
+        // Add Items
+        if (!isExitChunk && !shouldBePitfall && !shouldBeSecurityHallway) {
+          // MODIFIED
+          if (random() < ITEM_CHANCE_FLASHLIGHT) {
+            // MODIFIED
+            spawnItem(
+              "flashlight",
+              new THREE.Vector3(
+                random() * (CHUNK_SIZE - 4) + 2,
+                0.1,
+                random() * (CHUNK_SIZE - 4) + 2
+              ),
+              chunkGroup
+            );
+          }
+          if (random() < ITEM_CHANCE_ALMOND_WATER) {
+            // MODIFIED
+            spawnItem(
+              "almond_water",
+              new THREE.Vector3(
+                random() * (CHUNK_SIZE - 4) + 2,
+                0.1,
+                random() * (CHUNK_SIZE - 4) + 2
+              ),
+              chunkGroup
+            );
+          }
+          if (random() < ITEM_CHANCE_BATTERY) {
+            // NEW
+            spawnItem(
+              "battery",
+              new THREE.Vector3(
+                random() * (CHUNK_SIZE - 4) + 2,
+                0.1,
+                random() * (CHUNK_SIZE - 4) + 2
+              ),
+              chunkGroup
+            );
+          }
+        }
+
+        // NEW: Spawn SCP-173
+        // (Handled in updateVisibleChunks)
+      }
+
+      function addWallDecal(
+        chunkGroup,
+        wall,
+        random,
+        position,
+        rotation,
+        size,
+        chunkX,
+        chunkZ
+      ) {
+        let isNearExit = false;
+        if (
+          exitChunkCoords &&
+          (chunkX !== exitChunkCoords.x || chunkZ !== exitChunkCoords.z)
+        ) {
+          const distSq =
+            Math.pow(chunkX - exitChunkCoords.x, 2) +
+            Math.pow(chunkZ - exitChunkCoords.z, 2);
+          if (distSq < 9) {
+            isNearExit = true;
+          }
+        }
+
+        if (isNearExit) {
+          if (random() < GUIDE_ARROW_PROBABILITY) {
+            const chunkCenter = new THREE.Vector2(
+              chunkX * CHUNK_SIZE + CHUNK_SIZE / 2,
+              chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2
+            );
+            const exitCenter = new THREE.Vector2(
+              exitChunkCoords.x * CHUNK_SIZE + CHUNK_SIZE / 2,
+              exitChunkCoords.z * CHUNK_SIZE + CHUNK_SIZE / 2
+            );
+            const targetDir = exitCenter.sub(chunkCenter).normalize();
+            const decalGeo = new THREE.PlaneGeometry(size[0], size[1]);
+            const decalMat = graffitiMaterial.clone();
+            const textureToUse = createGraffitiTexture(random, targetDir);
+            decalMat.map = textureToUse;
+            decalMat.needsUpdate = true;
+            chunkGroup.userData.disposables.push(textureToUse);
+            chunkGroup.userData.disposables.push(decalMat);
+            const decalPlane = new THREE.Mesh(decalGeo, decalMat);
+            decalPlane.position.copy(position);
+            decalPlane.rotation.set(rotation.x, rotation.y, rotation.z);
+            chunkGroup.add(decalPlane);
+          }
+        } else {
+          if (random() < RANDOM_TORN_WALLPAPER_PROBABILITY) {
+            const decalWidth =
+              random() * (TORN_PAPER_MAX_WIDTH - TORN_PAPER_MIN_WIDTH) +
+              TORN_PAPER_MIN_WIDTH;
+            const decalHeight =
+              random() * (TORN_PAPER_MAX_HEIGHT - TORN_PAPER_MIN_HEIGHT) +
+              TORN_PAPER_MIN_HEIGHT;
+            const decalGeo = new THREE.PlaneGeometry(decalWidth, decalHeight);
+            const decalMat = tornWallpaperMaterial.clone();
+            const textureToUse = createTornWallpaperTexture(random);
+            decalMat.map = textureToUse;
+            decalMat.needsUpdate = true;
+            chunkGroup.userData.disposables.push(textureToUse);
+            chunkGroup.userData.disposables.push(decalMat);
+            const decalPlane = new THREE.Mesh(decalGeo, decalMat);
+            decalPlane.position.copy(position);
+            decalPlane.rotation.set(rotation.x, rotation.y, rotation.z);
+            chunkGroup.add(decalPlane);
+          }
+
+          if (random() < RANDOM_GRAFFITI_PROBABILITY) {
+            const decalGeo = new THREE.PlaneGeometry(size[0], size[1]);
+            const decalMat = graffitiMaterial.clone();
+            const textureToUse = createGraffitiTexture(random, null);
+            decalMat.map = textureToUse;
+            decalMat.needsUpdate = true;
+            chunkGroup.userData.disposables.push(textureToUse);
+            chunkGroup.userData.disposables.push(decalMat);
+            const decalPlane = new THREE.Mesh(decalGeo, decalMat);
+            decalPlane.position.copy(position);
+            decalPlane.rotation.set(rotation.x, rotation.y, rotation.z);
+            chunkGroup.add(decalPlane);
+          }
+        }
+      }
+
+      // MODIFIED: Added isDarkChunk parameter
+      function generatePitfallRoom(
+        chunkGroup,
+        random,
+        chunkWallpaperMaterial,
+        isDarkChunk
+      ) {
+        const roofGeometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE);
+        roofGeometry.rotateX(-Math.PI / 2);
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.position.set(CHUNK_SIZE / 2, WALL_HEIGHT + 1.0, CHUNK_SIZE / 2);
+        roof.receiveShadow = true;
+        chunkGroup.add(roof);
+
+        const pathCollisions = [];
+        const pathVisuals = new THREE.Group();
+        chunkGroup.add(pathVisuals);
+        const pathY = -PIT_PATH_HEIGHT / 2;
+
+        for (let i = 0; i < PIT_WALL_COUNT; i++) {
+          const z =
+            i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE + PIT_PATH_WIDTH / 2;
+          const pathGeo = new THREE.BoxGeometry(
+            CHUNK_SIZE,
+            PIT_PATH_HEIGHT,
+            PIT_PATH_WIDTH
+          );
+          const path = new THREE.Mesh(pathGeo, pitPathMaterial);
+          path.position.set(CHUNK_SIZE / 2, pathY, z);
+          path.receiveShadow = true;
+          path.castShadow = true;
+          path.geometry.computeBoundingBox();
+          pathVisuals.add(path);
+          objects.push(path);
+          pathCollisions.push(path);
+        }
+        for (let i = 0; i < PIT_WALL_COUNT; i++) {
+          const x =
+            i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE + PIT_PATH_WIDTH / 2;
+          const pathGeo = new THREE.BoxGeometry(
+            PIT_PATH_WIDTH,
+            PIT_PATH_HEIGHT,
+            CHUNK_SIZE
+          );
+          const path = new THREE.Mesh(pathGeo, pitPathMaterial);
+          path.position.set(x, pathY, CHUNK_SIZE / 2);
+          path.receiveShadow = true;
+          path.castShadow = true;
+          path.geometry.computeBoundingBox();
+          pathVisuals.add(path);
+          objects.push(path);
+          pathCollisions.push(path);
+        }
+
+        const pitGroup = new THREE.Group();
+        chunkGroup.add(pitGroup);
+        const darkWallMaterial = chunkWallpaperMaterial.clone();
+        darkWallMaterial.color.lerp(new THREE.Color(0x000000), 0.5);
+        darkWallMaterial.side = THREE.BackSide;
+        chunkGroup.userData.disposables.push(darkWallMaterial);
+
+        for (let x = 0; x < PIT_GRID_SIZE; x++) {
+          for (let z = 0; z < PIT_GRID_SIZE; z++) {
+            const pitCenterX = x * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE / 2;
+            const pitCenterZ = z * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE / 2;
+            const pitFloorGeo = new THREE.PlaneGeometry(PIT_SIZE, PIT_SIZE);
+            pitFloorGeo.rotateX(-Math.PI / 2);
+            const pitFloor = new THREE.Mesh(pitFloorGeo, darkPitMaterial);
+            pitFloor.position.set(pitCenterX, -PIT_DEPTH, pitCenterZ);
+            pitFloor.receiveShadow = true;
+            pitGroup.add(pitFloor);
+            const pitWallHeight = PIT_DEPTH;
+            const pitWallY = -pitWallHeight / 2;
+            const wallN = createWall(
+              PIT_SIZE,
+              pitWallHeight,
+              0.01,
+              darkWallMaterial
+            );
+            wallN.position.set(pitCenterX, pitWallY, pitCenterZ - PIT_SIZE / 2);
+            pitGroup.add(wallN);
+            const wallS = createWall(
+              PIT_SIZE,
+              pitWallHeight,
+              0.01,
+              darkWallMaterial
+            );
+            wallS.position.set(pitCenterX, pitWallY, pitCenterZ + PIT_SIZE / 2);
+            pitGroup.add(wallS);
+            const wallW = createWall(
+              0.01,
+              pitWallHeight,
+              PIT_SIZE,
+              darkWallMaterial
+            );
+            wallW.position.set(pitCenterX - PIT_SIZE / 2, pitWallY, pitCenterZ);
+            pitGroup.add(wallW);
+            const wallE = createWall(
+              0.01,
+              pitWallHeight,
+              PIT_SIZE,
+              darkWallMaterial
+            );
+            wallE.position.set(pitCenterX + PIT_SIZE / 2, pitWallY, pitCenterZ);
+            pitGroup.add(wallE);
+          }
+        }
+
+        const deathPlaneGeo = new THREE.BoxGeometry(CHUNK_SIZE, 10, CHUNK_SIZE);
+        const deathPlaneMat = new THREE.MeshBasicMaterial({
+          visible: false,
+          side: THREE.DoubleSide,
+        });
+        const deathPlane = new THREE.Mesh(deathPlaneGeo, deathPlaneMat);
+        deathPlane.position.set(CHUNK_SIZE / 2, -PIT_DEPTH - 5, CHUNK_SIZE / 2);
+        deathPlane.userData.isDeathPlane = true;
+        deathPlane.geometry.computeBoundingBox();
+        chunkGroup.add(deathPlane);
+        objects.push(deathPlane);
+
+        const ceiling = new THREE.Group();
+        chunkGroup.add(ceiling);
+        const tileGeo = new THREE.BoxGeometry(TILE_SIZE, 0.1, TILE_SIZE);
+        for (let x = 0; x < CHUNK_SIZE; x += TILE_SIZE) {
+          for (let z = 0; z < CHUNK_SIZE; z += TILE_SIZE) {
+            let onPath = false;
+            for (let i = 0; i < PIT_WALL_COUNT; i++) {
+              const pathZ = i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE;
+              if (
+                z >= pathZ - TILE_SIZE / 2 &&
+                z < pathZ + PIT_PATH_WIDTH + TILE_SIZE / 2
+              ) {
+                onPath = true;
+                break;
+              }
+            }
+            if (!onPath) {
+              for (let i = 0; i < PIT_WALL_COUNT; i++) {
+                const pathX = i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE;
+                if (
+                  x >= pathX - TILE_SIZE / 2 &&
+                  x < pathX + PIT_PATH_WIDTH + TILE_SIZE / 2
+                ) {
+                  onPath = true;
+                  break;
+                }
+              }
+            }
+
+            if (onPath) {
+              const missingTile = random() < MISSING_TILE_PROBABILITY;
+              if (missingTile) {
+                if (random() < CEILING_JUNK_DENSITY) {
+                  const pipeLength = TILE_SIZE * (random() * 2 + 1);
+                  const pipeGeo = new THREE.CylinderGeometry(
+                    0.05,
+                    0.05,
+                    pipeLength,
+                    8
+                  );
+                  const pipe = new THREE.Mesh(pipeGeo, pipeMaterial);
+                  pipe.position.set(
+                    x + TILE_SIZE / 2,
+                    WALL_HEIGHT + 0.3,
+                    z + TILE_SIZE / 2
+                  );
+                  if (random() < 0.5) pipe.rotateY(Math.PI / 2);
+                  ceiling.add(pipe);
+                }
+                continue;
+              }
+
+              const tile = new THREE.Mesh(tileGeo.clone(), ceilingMaterial);
+              tile.position.set(
+                x + TILE_SIZE / 2,
+                WALL_HEIGHT,
+                z + TILE_SIZE / 2
+              );
+              tile.receiveShadow = true;
+              ceiling.add(tile);
+
+              // Add Light (unless dark chunk)
+              if (random() < 0.015 && !isDarkChunk) {
+                // MODIFIED
+                createFluorescentLight(
+                  ceiling,
+                  x + TILE_SIZE / 2,
+                  z + TILE_SIZE / 2
+                );
+              }
+            }
+          }
+        }
+
+        for (let x = 1; x < PIT_GRID_SIZE; x++) {
+          for (let z = 1; z < PIT_GRID_SIZE; z++) {
+            if (random() < 0.4 && !isDarkChunk) {
+              // MODIFIED
+              const lightX =
+                x * (PIT_SIZE + PIT_PATH_WIDTH) - PIT_PATH_WIDTH / 2;
+              const lightZ =
+                z * (PIT_SIZE + PIT_PATH_WIDTH) - PIT_PATH_WIDTH / 2;
+              let lightExists = false;
+              ceiling.children.forEach((child) => {
+                if (
+                  child.isPointLight &&
+                  child.position.distanceTo(
+                    new THREE.Vector3(lightX, WALL_HEIGHT - 0.5, lightZ)
+                  ) <
+                    TILE_SIZE / 2
+                ) {
+                  lightExists = true;
+                }
+              });
+              if (!lightExists) {
+                createFluorescentLight(ceiling, lightX, lightZ);
+              }
+            }
+          }
+        }
+
+        const pathBoundaryIndices = {
+          north: new Set(),
+          south: new Set(),
+          west: new Set(),
+          east: new Set(),
+        };
+        pathCollisions.forEach((path) => {
+          const box = new THREE.Box3().setFromObject(path);
+          if (Math.abs(box.min.z) < 0.1) {
+            const xIndex = Math.floor(
+              path.position.x / (PIT_SIZE + PIT_PATH_WIDTH)
+            );
+            pathBoundaryIndices.north.add(xIndex);
+          }
+          if (Math.abs(box.max.z - CHUNK_SIZE) < 0.1) {
+            const xIndex = Math.floor(
+              path.position.x / (PIT_SIZE + PIT_PATH_WIDTH)
+            );
+            pathBoundaryIndices.south.add(xIndex);
+          }
+          if (Math.abs(box.min.x) < 0.1) {
+            const zIndex = Math.floor(
+              path.position.z / (PIT_SIZE + PIT_PATH_WIDTH)
+            );
+            pathBoundaryIndices.west.add(zIndex);
+          }
+          if (Math.abs(box.max.x - CHUNK_SIZE) < 0.1) {
+            const zIndex = Math.floor(
+              path.position.z / (PIT_SIZE + PIT_PATH_WIDTH)
+            );
+            pathBoundaryIndices.east.add(zIndex);
+          }
+        });
+
+        const wallHeight = WALL_HEIGHT + PIT_DEPTH;
+        const yPos = -PIT_DEPTH / 2 + WALL_HEIGHT / 2;
+        const segmentLength = PIT_SIZE + PIT_PATH_WIDTH;
+
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.north.has(i)) {
+            const wall = createWall(
+              segmentLength,
+              wallHeight,
+              WALL_THICKNESS,
+              chunkWallpaperMaterial
+            );
+            const wallX = i * segmentLength + segmentLength / 2;
+            wall.position.set(wallX, yPos, 0);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.south.has(i)) {
+            const wall = createWall(
+              segmentLength,
+              wallHeight,
+              WALL_THICKNESS,
+              chunkWallpaperMaterial
+            );
+            const wallX = i * segmentLength + segmentLength / 2;
+            wall.position.set(wallX, yPos, CHUNK_SIZE);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.west.has(i)) {
+            const wall = createWall(
+              WALL_THICKNESS,
+              wallHeight,
+              segmentLength,
+              chunkWallpaperMaterial
+            );
+            const wallZ = i * segmentLength + segmentLength / 2;
+            wall.position.set(0, yPos, wallZ);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.east.has(i)) {
+            const wall = createWall(
+              WALL_THICKNESS,
+              wallHeight,
+              segmentLength,
+              chunkWallpaperMaterial
+            );
+            const wallZ = i * segmentLength + segmentLength / 2;
+            wall.position.set(CHUNK_SIZE, yPos, wallZ);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+      }
+
+      // NEW: Generate Security Hallway
+      function generateSecurityHallway(chunkGroup, random, isDarkChunk) {
+        // Floor, Roof, Ceiling
+        // FIX: Use a thicker BoxGeometry for the floor to prevent tunneling
+        const floorGeometry = new THREE.BoxGeometry(
+          CHUNK_SIZE,
+          1.0,
+          CHUNK_SIZE
+        );
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.position.set(CHUNK_SIZE / 2, -0.5, CHUNK_SIZE / 2); // Position center at y=-0.5 so top is at y=0
+        floor.receiveShadow = true;
+        chunkGroup.add(floor);
+        objects.push(floor);
+
+        const roof = new THREE.Mesh(floorGeometry.clone(), roofMaterial);
+        roof.position.set(CHUNK_SIZE / 2, WALL_HEIGHT + 1.0, CHUNK_SIZE / 2);
+        roof.receiveShadow = true;
+        chunkGroup.add(roof);
+
+        const ceiling = new THREE.Group();
+        chunkGroup.add(ceiling);
+
+        // Logic
+        const isNorthSouth = random() > 0.5;
+        const hallwayWidth = 4;
+        const doorWidth = 1.0;
+        const doorHeight = 2.0;
+
+        if (isNorthSouth) {
+          // West Wall
+          const westWall = createWall(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            CHUNK_SIZE,
+            wallpaperMaterial
+          );
+          westWall.position.set(
+            CHUNK_SIZE / 2 - hallwayWidth / 2,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE / 2
+          );
+          chunkGroup.add(westWall);
+          objects.push(westWall);
+          // East Wall
+          const eastWall = createWall(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            CHUNK_SIZE,
+            wallpaperMaterial
+          );
+          eastWall.position.set(
+            CHUNK_SIZE / 2 + hallwayWidth / 2,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE / 2
+          );
+          chunkGroup.add(eastWall);
+          objects.push(eastWall);
+
+          // North/South walls (with door openings)
+          const wallN_Left = createWall(
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            WALL_HEIGHT,
+            WALL_THICKNESS,
+            wallpaperMaterial
+          );
+          wallN_Left.position.set(
+            (CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2)) /
+              2,
+            WALL_HEIGHT / 2,
+            0
+          );
+          chunkGroup.add(wallN_Left);
+          objects.push(wallN_Left);
+
+          const wallN_Right = createWall(
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            WALL_HEIGHT,
+            WALL_THICKNESS,
+            wallpaperMaterial
+          );
+          wallN_Right.position.set(
+            CHUNK_SIZE / 2 +
+              doorWidth / 2 +
+              (CHUNK_SIZE / 2 -
+                hallwayWidth / 2 +
+                (hallwayWidth / 2 - doorWidth / 2)) /
+                2,
+            WALL_HEIGHT / 2,
+            0
+          );
+          chunkGroup.add(wallN_Right);
+          objects.push(wallN_Right);
+
+          createSecurityDoor(
+            chunkGroup,
+            new THREE.Vector3(
+              CHUNK_SIZE / 2 - doorWidth / 2,
+              0,
+              WALL_THICKNESS / 2
+            ),
+            0
+          ); // North door
+
+          const wallS_Left = createWall(
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            WALL_HEIGHT,
+            WALL_THICKNESS,
+            wallpaperMaterial
+          );
+          wallS_Left.position.set(
+            (CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2)) /
+              2,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE
+          );
+          chunkGroup.add(wallS_Left);
+          objects.push(wallS_Left);
+
+          const wallS_Right = createWall(
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            WALL_HEIGHT,
+            WALL_THICKNESS,
+            wallpaperMaterial
+          );
+          wallS_Right.position.set(
+            CHUNK_SIZE / 2 +
+              doorWidth / 2 +
+              (CHUNK_SIZE / 2 -
+                hallwayWidth / 2 +
+                (hallwayWidth / 2 - doorWidth / 2)) /
+                2,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE
+          );
+          chunkGroup.add(wallS_Right);
+          objects.push(wallS_Right);
+
+          createSecurityDoor(
+            chunkGroup,
+            new THREE.Vector3(
+              CHUNK_SIZE / 2 + doorWidth / 2,
+              0,
+              CHUNK_SIZE - WALL_THICKNESS / 2
+            ),
+            Math.PI
+          ); // South door
+        } else {
+          // East-West
+          const northWall = createWall(
+            CHUNK_SIZE,
+            WALL_HEIGHT,
+            WALL_THICKNESS,
+            wallpaperMaterial
+          );
+          northWall.position.set(
+            CHUNK_SIZE / 2,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE / 2 - hallwayWidth / 2
+          );
+          chunkGroup.add(northWall);
+          objects.push(northWall);
+
+          const southWall = createWall(
+            CHUNK_SIZE,
+            WALL_HEIGHT,
+            WALL_THICKNESS,
+            wallpaperMaterial
+          );
+          southWall.position.set(
+            CHUNK_SIZE / 2,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE / 2 + hallwayWidth / 2
+          );
+          chunkGroup.add(southWall);
+          objects.push(southWall);
+
+          // West/East walls
+          const wallW_Top = createWall(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            wallpaperMaterial
+          );
+          wallW_Top.position.set(
+            0,
+            WALL_HEIGHT / 2,
+            (CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2)) /
+              2
+          );
+          chunkGroup.add(wallW_Top);
+          objects.push(wallW_Top);
+
+          const wallW_Bot = createWall(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            wallpaperMaterial
+          );
+          wallW_Bot.position.set(
+            0,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE / 2 +
+              doorWidth / 2 +
+              (CHUNK_SIZE / 2 -
+                hallwayWidth / 2 +
+                (hallwayWidth / 2 - doorWidth / 2)) /
+                2
+          );
+          chunkGroup.add(wallW_Bot);
+          objects.push(wallW_Bot);
+
+          createSecurityDoor(
+            chunkGroup,
+            new THREE.Vector3(
+              WALL_THICKNESS / 2,
+              0,
+              CHUNK_SIZE / 2 + doorWidth / 2
+            ),
+            Math.PI / 2
+          ); // West door
+
+          const wallE_Top = createWall(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            wallpaperMaterial
+          );
+          wallE_Top.position.set(
+            CHUNK_SIZE,
+            WALL_HEIGHT / 2,
+            (CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2)) /
+              2
+          );
+          chunkGroup.add(wallE_Top);
+          objects.push(wallE_Top);
+
+          const wallE_Bot = createWall(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            CHUNK_SIZE / 2 -
+              hallwayWidth / 2 +
+              (hallwayWidth / 2 - doorWidth / 2),
+            wallpaperMaterial
+          );
+          wallE_Bot.position.set(
+            CHUNK_SIZE,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE / 2 +
+              doorWidth / 2 +
+              (CHUNK_SIZE / 2 -
+                hallwayWidth / 2 +
+                (hallwayWidth / 2 - doorWidth / 2)) /
+                2
+          );
+          chunkGroup.add(wallE_Bot);
+          objects.push(wallE_Bot);
+
+          createSecurityDoor(
+            chunkGroup,
+            new THREE.Vector3(
+              CHUNK_SIZE - WALL_THICKNESS / 2,
+              0,
+              CHUNK_SIZE / 2 - doorWidth / 2
+            ),
+            -Math.PI / 2
+          ); // East door
+        }
+
+        // Add lights to hallway
+        for (let i = 0; i < 4; i++) {
+          if (isDarkChunk) continue;
+          let lightX, lightZ;
+          if (isNorthSouth) {
+            lightX = CHUNK_SIZE / 2;
+            lightZ = (i * CHUNK_SIZE) / 4 + CHUNK_SIZE / 8;
+          } else {
+            lightX = (i * CHUNK_SIZE) / 4 + CHUNK_SIZE / 8;
+            lightZ = CHUNK_SIZE / 2;
+          }
+          createFluorescentLight(ceiling, lightX, lightZ);
+        }
+      }
+
+      // NEW: Create Security Door
+      function createSecurityDoor(chunkGroup, position, yRotation) {
+        const doorGroup = new THREE.Group();
+        doorGroup.userData.isDoor = true;
+        doorGroup.userData.isOpen = false;
+        // Position the pivot at the hinge
+        doorGroup.position.copy(position);
+        doorGroup.rotation.y = yRotation;
+        chunkGroup.add(doorGroup);
+
+        const doorGeo = new THREE.BoxGeometry(1, 2, 0.15); // Slightly thicker
+        const doorMesh = new THREE.Mesh(doorGeo, securityDoorMaterial);
+        doorMesh.userData.isDoorPart = true;
+        doorMesh.position.set(0.5, 1, 0); // Position relative to pivot
+        doorMesh.castShadow = true;
+        doorMesh.receiveShadow = true;
+        doorGroup.add(doorMesh);
+
+        // Doorknob
+        const knobGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.1, 8);
+        const knobMat = new THREE.MeshStandardMaterial({
+          color: 0x444444,
+          metalness: 1.0,
+          roughness: 0.2,
+        });
+        const knob = new THREE.Mesh(knobGeo, knobMat);
+        knob.rotation.x = Math.PI / 2;
+        knob.position.set(0.4, 0.0, 0.1); // On the door mesh
+        knob.userData.isDoorPart = true;
+        doorMesh.add(knob);
+
+        // Add door to interactables
+        interactableItems.push(doorGroup);
+        // Add door to collision objects
+        objects.push(doorGroup);
+        // Compute bounding box for the door group
+        doorGroup.geometry = new THREE.BoxGeometry(1, 2, 0.15);
+        doorGroup.geometry.translate(0.5, 1, 0);
+        doorGroup.geometry.computeBoundingBox();
+      }
+
+      function generateExitRoom(chunkGroup, random) {
+        // FIX: Use a thicker BoxGeometry for the floor to prevent tunneling
+        const floorGeometry = new THREE.BoxGeometry(
+          CHUNK_SIZE,
+          1.0,
+          CHUNK_SIZE
+        );
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.position.set(CHUNK_SIZE / 2, -0.5, CHUNK_SIZE / 2); // Position center at y=-0.5 so top is at y=0
+        floor.receiveShadow = true;
+        floor.geometry.computeBoundingBox();
+        chunkGroup.add(floor);
+        objects.push(floor);
+
+        const doorFrameGeo = new THREE.BoxGeometry(1.2, 2.2, 0.3);
+        const doorFrameMat = new THREE.MeshStandardMaterial({
+          color: 0x332211,
+        });
+        exitDoorFrameMesh = new THREE.Mesh(doorFrameGeo, doorFrameMat);
+        exitDoorFrameMesh.position.set(CHUNK_SIZE / 2, 1.1, 0.15);
+        chunkGroup.add(exitDoorFrameMesh);
+
+        const doorGeo = new THREE.BoxGeometry(1, 2, 0.1);
+        const doorMat = new THREE.MeshStandardMaterial({
+          color: 0x8b4513,
+          roughness: 0.8,
+        });
+        exitDoorMesh = new THREE.Mesh(doorGeo, doorMat);
+        exitDoorMesh.position.set(CHUNK_SIZE / 2, 1, 0.05);
+        chunkGroup.add(exitDoorMesh);
+
+        const signCanvas = document.createElement("canvas");
+        signCanvas.width = 256;
+        signCanvas.height = 128;
+        const signContext = signCanvas.getContext("2d");
+        signContext.fillStyle = "#cc0000";
+        signContext.fillRect(0, 0, 256, 128);
+        signContext.font = "bold 80px Arial";
+        signContext.fillStyle = "#ffffff";
+        signContext.textAlign = "center";
+        signContext.textBaseline = "middle";
+        signContext.fillText("EXIT", 128, 64);
+        const signTexture = new THREE.CanvasTexture(signCanvas);
+        const signMat = new THREE.MeshBasicMaterial({ map: signTexture });
+        const signGeo = new THREE.PlaneGeometry(1, 0.5);
+        exitSignMesh = new THREE.Mesh(signGeo, signMat);
+        exitSignMesh.position.set(CHUNK_SIZE / 2, 2.5, 0.31);
+        chunkGroup.add(exitSignMesh);
+
+        const exitLight = new THREE.PointLight(0xffccaa, 0.8, 4);
+        exitLight.position.set(CHUNK_SIZE / 2, 2.8, 0.5);
+        exitLight.castShadow = false;
+        chunkGroup.add(exitLight);
+
+        if (isRedShiftActive) {
+          exitLight.color.set(0xff4444);
+          exitLight.userData.baseIntensity = 0.8 * 0.8;
+        } else {
+          exitLight.userData.baseIntensity = 0.8;
+        }
+        exitLight.userData.isExitLight = true;
+
+        const exitTriggerGeo = new THREE.BoxGeometry(1.5, 2.5, 0.8);
+        const exitTriggerMat = new THREE.MeshBasicMaterial({
+          visible: false,
+          side: THREE.DoubleSide,
+        });
+        exitTriggerMesh = new THREE.Mesh(exitTriggerGeo, exitTriggerMat);
+        exitTriggerMesh.position.set(CHUNK_SIZE / 2, 1.25, 0.4);
+        exitTriggerMesh.userData.isExit = true;
+        exitTriggerMesh.geometry.computeBoundingBox();
+        chunkGroup.add(exitTriggerMesh);
+        objects.push(exitTriggerMesh);
+      }
+
+      function createWall(width, height, depth, material) {
+        const geometry = new THREE.BoxGeometry(width, height, depth);
+        const wall = new THREE.Mesh(geometry, material);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        geometry.computeBoundingBox();
+        return wall;
+      }
+
+      function createFluorescentLight(parent, x, z) {
+        const lightFixtureGeo = new THREE.BoxGeometry(
+          TILE_SIZE,
+          0.1,
+          TILE_SIZE
+        );
+        const lightFixtureMat = new THREE.MeshStandardMaterial({
+          color: 0xbbbbbb,
+        });
+        const fixture = new THREE.Mesh(lightFixtureGeo, lightFixtureMat);
+        fixture.position.set(x, WALL_HEIGHT, z);
+        parent.add(fixture);
+
+        const bulbGeo = new THREE.BoxGeometry(
+          TILE_SIZE * 0.8,
+          0.05,
+          TILE_SIZE * 0.8
+        );
+        const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+        bulb.position.set(x, WALL_HEIGHT - 0.05, z);
+        parent.add(bulb);
+
+        const light = new THREE.PointLight(0xffffff, 0.5, 8);
+        light.position.set(x, WALL_HEIGHT - 0.5, z);
+        light.castShadow = false;
+        parent.add(light);
+
+        light.userData.isFluorescent = true;
+
+        if (isRedShiftActive) {
+          light.color.set(0xff4444);
+          light.userData.baseIntensity = 0.5 * 0.8;
+        } else {
+          light.userData.baseIntensity = 0.5;
+        }
+      }
+
+      // --- Prop Creation ---
+      function createDesk() {
+        const deskGroup = new THREE.Group();
+        const deskHeight = 0.75;
+        const topGeo = new THREE.BoxGeometry(1.5, 0.05, 0.7);
+        const top = new THREE.Mesh(topGeo, deskMaterial);
+        top.position.y = deskHeight - 0.025;
+        deskGroup.add(top);
+
+        const legGeo = new THREE.BoxGeometry(0.05, deskHeight - 0.05, 0.05);
+        const legPositions = [
+          [-0.7, 0, -0.3],
+          [-0.7, 0, 0.3],
+          [0.7, 0, -0.3],
+          [0.7, 0, 0.3],
+        ];
+        legPositions.forEach((pos) => {
+          const leg = new THREE.Mesh(legGeo, deskMaterial);
+          leg.position.set(pos[0], (deskHeight - 0.05) / 2, pos[2]);
+          deskGroup.add(leg);
+        });
+        deskGroup.geometry = new THREE.BoxGeometry(1.5, deskHeight, 0.7);
+        deskGroup.geometry.translate(0, deskHeight / 2, 0); // FIX: Center the bounding box vertically
+        deskGroup.geometry.computeBoundingBox();
+        return deskGroup;
+      }
+
+      function createChair() {
+        const chairGroup = new THREE.Group();
+        const seatHeight = 0.45;
+        const backHeight = 0.5;
+
+        const seatGeo = new THREE.BoxGeometry(0.5, 0.05, 0.5);
+        const seat = new THREE.Mesh(seatGeo, chairMaterial);
+        seat.position.y = seatHeight - 0.025;
+        chairGroup.add(seat);
+
+        const backGeo = new THREE.BoxGeometry(0.5, backHeight, 0.05);
+        const back = new THREE.Mesh(backGeo, chairMaterial);
+        back.position.set(0, seatHeight + backHeight / 2 - 0.025, -0.225);
+        chairGroup.add(back);
+
+        const legGeo = new THREE.BoxGeometry(0.04, seatHeight - 0.05, 0.04);
+        const legPositions = [
+          [-0.23, 0, -0.23],
+          [-0.23, 0, 0.23],
+          [0.23, 0, -0.23],
+          [0.23, 0, 0.23],
+        ];
+        legPositions.forEach((pos) => {
+          const leg = new THREE.Mesh(legGeo, chairMaterial);
+          leg.position.set(pos[0], (seatHeight - 0.05) / 2, pos[2]);
+          chairGroup.add(leg);
+        });
+        chairGroup.geometry = new THREE.BoxGeometry(
+          0.5,
+          seatHeight + backHeight,
+          0.5
+        );
+        chairGroup.geometry.translate(0, (seatHeight + backHeight) / 2, 0); // FIX: Center the bounding box vertically
+        chairGroup.geometry.computeBoundingBox();
+        return chairGroup;
+      }
+
+      // NEW: Create Player Body Model
+      function createPlayerBody() {
+        const bodyGroup = new THREE.Group();
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+          color: 0xf5d442, // Hazmat yellow
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+
+        // Torso
+        const torsoGeo = new THREE.CylinderGeometry(0.25, 0.2, 0.8, 16);
+        const torso = new THREE.Mesh(torsoGeo, bodyMaterial);
+        torso.position.y = -0.6; // Position below camera
+        bodyGroup.add(torso);
+
+        // Legs
+        const legGeo = new THREE.CylinderGeometry(0.1, 0.08, 0.7, 12);
+        const leftLeg = new THREE.Mesh(legGeo, bodyMaterial);
+        leftLeg.position.set(-0.12, -1.3, 0);
+        bodyGroup.add(leftLeg);
+
+        const rightLeg = new THREE.Mesh(legGeo, bodyMaterial);
+        rightLeg.position.set(0.12, -1.3, 0);
+        bodyGroup.add(rightLeg);
+
+        // Position the whole group relative to the camera
+        bodyGroup.position.y = -playerHeight + 0.4; // Adjust so feet are at playerHeight
+        return bodyGroup;
+      }
+
+      // NEW: Create SCP-173 Model
+      function createSCP173() {
+        const group = new THREE.Group();
+        group.userData.isSCP173 = true; // Flag for collision/raycast
+
+        const random = Math.random; // Use non-seeded for model variance
+
+        // Function to add noise to geometry
+        function roughenGeometry(geometry, noiseAmount) {
+          const position = geometry.attributes.position;
+          const normal = geometry.attributes.normal;
+          const tempVec = new THREE.Vector3();
+
+          for (let i = 0; i < position.count; i++) {
+            tempVec.fromBufferAttribute(normal, i);
+            tempVec.multiplyScalar((random() - 0.5) * noiseAmount);
+            position.setX(i, position.getX(i) + tempVec.x);
+            position.setY(i, position.getY(i) + tempVec.y);
+            position.setZ(i, position.getZ(i) + tempVec.z);
+          }
+          geometry.computeVertexNormals();
+          return geometry;
+        }
+
+        // Torso
+        let torsoGeo = new THREE.CylinderGeometry(0.5, 0.6, 1.2, 16, 8);
+        torsoGeo = roughenGeometry(torsoGeo, 0.1);
+        const torso = new THREE.Mesh(torsoGeo, concreteMaterial);
+        torso.position.y = 1.0; // Center of torso
+        torso.castShadow = true;
+        torso.receiveShadow = true;
+        torso.userData.isSCP173 = true;
+        group.add(torso);
+
+        // Head
+        let headGeo = new THREE.SphereGeometry(0.4, 20, 16);
+        headGeo = roughenGeometry(headGeo, 0.05);
+        const faceMaterial = new THREE.MeshStandardMaterial({
+          map: createSCP173FaceTexture(),
+          roughness: 0.8,
+        });
+        const head = new THREE.Mesh(headGeo, faceMaterial);
+        head.position.y = 1.8; // Top of torso + radius
+        head.castShadow = true;
+        head.userData.isSCP173 = true;
+        group.add(head);
+
+        // Limbs (simple cylinders)
+        let limbGeo = new THREE.CylinderGeometry(0.15, 0.1, 0.8, 8, 4);
+        limbGeo = roughenGeometry(limbGeo, 0.05);
+        const arm1 = new THREE.Mesh(limbGeo, concreteMaterial);
+        arm1.position.set(-0.6, 1.2, 0);
+        arm1.rotation.z = Math.PI / 4;
+        arm1.castShadow = true;
+        arm1.userData.isSCP173 = true;
+        group.add(arm1);
+
+        const arm2 = new THREE.Mesh(limbGeo.clone(), concreteMaterial);
+        arm2.position.set(0.6, 1.2, 0);
+        arm2.rotation.z = -Math.PI / 4;
+        arm2.castShadow = true;
+        arm2.userData.isSCP173 = true;
+        group.add(arm2);
+
+        let legGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.4, 10, 3);
+        legGeo = roughenGeometry(legGeo, 0.08);
+        const leg1 = new THREE.Mesh(legGeo, concreteMaterial);
+        leg1.position.set(-0.25, 0.2, 0);
+        leg1.castShadow = true;
+        leg1.userData.isSCP173 = true;
+        group.add(leg1);
+
+        const leg2 = new THREE.Mesh(legGeo.clone(), concreteMaterial);
+        leg2.position.set(0.25, 0.2, 0);
+        leg2.castShadow = true;
+        leg2.userData.isSCP173 = true;
+        group.add(leg2);
+
+        // Set geometry for collision
+        group.geometry = new THREE.BoxGeometry(1.2, 2.2, 1.2); // Bounding box
+        group.geometry.translate(0, 1.1, 0); // Center the box
+        group.geometry.computeBoundingBox();
+
+        scp173LastPosition.copy(group.position); // NEW: Initialize last position
+        return group;
+      }
+
+      // NEW: Create Room and Door
+      function createRoomAndDoor(chunkGroup, cellCenter, random, cellSize) {
+        console.log("Creating room at", cellCenter);
+        // NEW: Random room size (MODIFIED as requested)
+        const roomSize = random() * 6.0 + 4.0; // 4m up to 10m
+        const roomHalf = roomSize / 2;
+        const roomY = WALL_HEIGHT / 2;
+
+        // Walls (positions are now relative to roomSize)
+        const wallN = createWall(
+          roomSize,
+          WALL_HEIGHT,
+          WALL_THICKNESS,
+          wallpaperMaterial
+        );
+        wallN.position.set(cellCenter.x, roomY, cellCenter.z - roomHalf);
+        chunkGroup.add(wallN);
+        objects.push(wallN);
+
+        // South wall (with door opening)
+        const wallS_Left = createWall(
+          roomHalf - 0.5, // 0.5 is half door width
+          WALL_HEIGHT,
+          WALL_THICKNESS,
+          wallpaperMaterial
+        );
+        wallS_Left.position.set(
+          cellCenter.x - (roomHalf / 2 + 0.25), // Position left part
+          roomY,
+          cellCenter.z + roomHalf
+        );
+        chunkGroup.add(wallS_Left);
+        objects.push(wallS_Left);
+
+        const wallS_Right = createWall(
+          roomHalf - 0.5,
+          WALL_HEIGHT,
+          WALL_THICKNESS,
+          wallpaperMaterial
+        );
+        wallS_Right.position.set(
+          cellCenter.x + (roomHalf / 2 + 0.25), // Position right part
+          roomY,
+          cellCenter.z + roomHalf
+        );
+        chunkGroup.add(wallS_Right);
+        objects.push(wallS_Right);
+
+        const wallW = createWall(
+          WALL_THICKNESS,
+          WALL_HEIGHT,
+          roomSize,
+          wallpaperMaterial
+        );
+        wallW.position.set(cellCenter.x - roomHalf, roomY, cellCenter.z);
+        chunkGroup.add(wallW);
+        objects.push(wallW);
+
+        const wallE = createWall(
+          WALL_THICKNESS,
+          WALL_HEIGHT,
+          roomSize,
+          wallpaperMaterial
+        );
+        wallE.position.set(cellCenter.x + roomHalf, roomY, cellCenter.z);
+        chunkGroup.add(wallE);
+        objects.push(wallE);
+
+        // Ceiling
+        const roomCeilingGeo = new THREE.PlaneGeometry(roomSize, roomSize);
+        const roomCeiling = new THREE.Mesh(roomCeilingGeo, ceilingMaterial);
+        roomCeiling.position.set(cellCenter.x, WALL_HEIGHT, cellCenter.z);
+        roomCeiling.rotation.x = -Math.PI / 2;
+        chunkGroup.add(roomCeiling);
+
+        // Door
+        const doorGroup = new THREE.Group();
+        doorGroup.userData.isDoor = true;
+        doorGroup.userData.isOpen = false;
+        // Position the pivot at the hinge
+        doorGroup.position.set(
+          cellCenter.x - 0.5,
+          0,
+          cellCenter.z + roomHalf // Attach to south wall
+        );
+        chunkGroup.add(doorGroup);
+
+        const doorGeo = new THREE.BoxGeometry(1, 2, 0.1);
+        const doorMesh = new THREE.Mesh(doorGeo, doorMaterial);
+        doorMesh.userData.isDoorPart = true;
+        doorMesh.position.set(0.5, 1, 0); // Position relative to pivot
+        doorMesh.castShadow = true;
+        doorMesh.receiveShadow = true;
+        doorGroup.add(doorMesh);
+
+        // Doorknob
+        const knobGeo = new THREE.SphereGeometry(0.05, 8, 8);
+        const knobMat = new THREE.MeshStandardMaterial({
+          color: 0xdddd00,
+          metalness: 1.0,
+          roughness: 0.2,
+        });
+        const knob = new THREE.Mesh(knobGeo, knobMat);
+        knob.position.set(0.4, 0.0, 0.06); // On the door mesh
+        knob.userData.isDoorPart = true;
+        doorMesh.add(knob);
+
+        // Add door to interactables
+        interactableItems.push(doorGroup);
+        // Add door to collision objects
+        objects.push(doorGroup);
+        // Compute bounding box for the door group
+        doorGroup.geometry = new THREE.BoxGeometry(1, 2, 0.1);
+        doorGroup.geometry.translate(0.5, 1, 0);
+        doorGroup.geometry.computeBoundingBox();
+
+        // Add a desk in the room
+        const desk = createDesk();
+        desk.position.set(cellCenter.x, 0, cellCenter.z - roomHalf * 0.5);
+        desk.rotateY(Math.PI / 2);
+        chunkGroup.add(desk);
+        objects.push(desk);
+      }
+
+      // NEW: Toggle Door
+      function toggleDoor(doorGroup) {
+        if (doorGroup.userData.isOpen) {
+          doorGroup.rotation.y = 0;
+          doorGroup.userData.isOpen = false;
+        } else {
+          doorGroup.rotation.y = Math.PI / 2;
+          doorGroup.userData.isOpen = true;
+        }
+        // Update collision bounding box
+        doorGroup.updateMatrixWorld();
+        doorGroup.geometry.computeBoundingBox();
+      }
+
+      // Simple pseudo-random number generator for seeded randomness
+      function createSeededRandom(seed) {
+        let state = seed % 2147483647;
+        if (state <= 0) state += 2147483646;
+        return () => {
+          state = (state * 16807) % 2147483647;
+          return (state - 1) / 2147483646;
+        };
+      }
+
+      function updateVisibleChunks() {
+        const playerChunkX = Math.floor(camera.position.x / CHUNK_SIZE);
+        const playerChunkZ = Math.floor(camera.position.z / CHUNK_SIZE);
+
+        if (
+          playerChunkX !== currentChunk.x ||
+          playerChunkZ !== currentChunk.z
+        ) {
+          currentChunk = { x: playerChunkX, z: playerChunkZ };
+        }
+
+        const distFromSpawnSq =
+          playerChunkX * playerChunkX + playerChunkZ * playerChunkZ;
+        const redShiftThresholdSq = RED_SHIFT_DISTANCE * RED_SHIFT_DISTANCE;
+        const redShiftTarget = distFromSpawnSq >= redShiftThresholdSq;
+
+        if (redShiftTarget && !isRedShiftActive) {
+          isRedShiftActive = true;
+          redShiftActivationChunk = { x: playerChunkX, z: playerChunkZ };
+          console.log("!!! RED SHIFT ACTIVATED !!!");
+          scene.background.set(0x330000);
+          scene.fog.color.set(0x330000);
+          ambientLight.color.set(0x550000);
+          generatedChunks.forEach((chunk, key) => {
+            if (chunk.visible) {
+              chunk.traverse((obj) => {
+                if (
+                  obj.isPointLight &&
+                  (obj.userData.isFluorescent || obj.userData.isExitLight)
+                ) {
+                  obj.color.set(0xff4444);
+                  if (obj.userData.baseIntensity > 0.1) {
+                    obj.userData.baseIntensity *= 0.8;
+                  }
+                }
+              });
+            }
+          });
+        } else if (!redShiftTarget && isRedShiftActive) {
+          isRedShiftActive = false;
+          redShiftActivationChunk = null;
+          console.log("Red Shift Deactivated.");
+          scene.background.set(0x1a1a10);
+          scene.fog.color.set(0x1a1a10);
+          ambientLight.color.set(0x404040);
+          generatedChunks.forEach((chunk, key) => {
+            if (chunk.visible) {
+              chunk.traverse((obj) => {
+                if (
+                  obj.isPointLight &&
+                  (obj.userData.isFluorescent || obj.userData.isExitLight)
+                ) {
+                  if (obj.userData.isExitLight) {
+                    obj.color.set(0xffccaa);
+                  } else {
+                    obj.color.set(0xffffff);
+                  }
+                  if (obj.userData.baseIntensity < 1.0) {
+                    obj.userData.baseIntensity /= 0.8;
+                  }
+                }
+              });
+            }
+          });
+        }
+
+        if (
+          isRedShiftActive &&
+          redShiftActivationChunk &&
+          !gameWon &&
+          gameRunning
+        ) {
+          const distFromActivationSq =
+            Math.pow(playerChunkX - redShiftActivationChunk.x, 2) +
+            Math.pow(playerChunkZ - redShiftActivationChunk.z, 2);
+
+          if (
+            distFromActivationSq >=
+            RED_SHIFT_EXIT_DISTANCE * RED_SHIFT_EXIT_DISTANCE
+          ) {
+            triggerLevelLoad(
+              "Level0.1.html",
+              "You've gone too far...",
+              "Loading Level 0.1..."
+            );
+          }
+        }
+
+        // NEW: Spawn SCP-173 logic
+        if (!scp173Spawned && !gameWon && distFromSpawnSq > 4) {
+          // Spawn after player moves 2 chunks away
+          console.log("Attempting to spawn SCP-173...");
+          const random = Math.random;
+          // Try to spawn in an adjacent chunk
+          let dx = Math.floor(random() * 3) - 1; // -1, 0, 1
+          let dz = Math.floor(random() * 3) - 1; // -1, 0, 1
+          if (dx === 0 && dz === 0) {
+            dz = 1; // Don't spawn in player's current chunk
+          }
+
+          const targetChunkX = playerChunkX + dx;
+          const targetChunkZ = playerChunkZ + dz;
+          const targetChunkKey = `${targetChunkX},${targetChunkZ}`;
+
+          if (!generatedChunks.has(targetChunkKey)) {
+            generateChunk(targetChunkX, targetChunkZ);
+          }
+          const targetChunk = generatedChunks.get(targetChunkKey);
+
+          if (
+            targetChunk &&
+            !targetChunk.userData.isPitfallChunk &&
+            !targetChunk.userData.isExitChunk
+          ) {
+            scp173Mesh = createSCP173();
+            targetChunk.add(scp173Mesh);
+            // Spawn in a random cell
+            const isHallway = targetChunk.userData.isSecurityHallway;
+            const gridDiv = isHallway ? 1 : 5;
+            const cellSize = CHUNK_SIZE / gridDiv;
+            const spawnCellX = Math.floor(random() * gridDiv);
+            const spawnCellZ = Math.floor(random() * gridDiv);
+            scp173Mesh.position.set(
+              spawnCellX * cellSize + cellSize / 2,
+              0,
+              spawnCellZ * cellSize + cellSize / 2
+            );
+            objects.push(scp173Mesh); // Add to collision objects
+            scp173Spawned = true;
+            scp173LastPosition.copy(scp173Mesh.position); // Initialize last position
+            console.warn(
+              `[SCP SPAWN] SCP-173 spawned in chunk: ${targetChunkKey}`
+            ); // MODIFIED: Made log more visible
+          } else {
+            console.log(
+              "SCP-173 spawn failed, invalid chunk. Retrying next update."
+            );
+          }
+        }
+
+        const viewDistance = 1;
+        for (let dx = -viewDistance; dx <= viewDistance; dx++) {
+          for (let dz = -viewDistance; dz <= viewDistance; dz++) {
+            const checkX = playerChunkX + dx;
+            const checkZ = playerChunkZ + dz;
+            const chunkKey = `${checkX},${checkZ}`;
+
+            if (!generatedChunks.has(chunkKey)) {
+              generateChunk(checkX, checkZ);
+            } else {
+              const chunk = generatedChunks.get(chunkKey);
+              if (chunk && !chunk.visible) chunk.visible = true;
+            }
+          }
+        }
+
+        // --- Remove distant chunks ---
+        const chunksToRemove = [];
+        generatedChunks.forEach((chunk, key) => {
+          const [xStr, zStr] = key.split(",");
+          const x = parseInt(xStr);
+          const z = parseInt(zStr);
+          const distSq =
+            Math.pow(x - playerChunkX, 2) + Math.pow(z - playerChunkZ, 2);
+
+          if (distSq > viewDistance * viewDistance + 1) {
+            chunk.visible = false;
+            // chunksToRemove.push(key);
+          }
+        });
+
+        // --- Cleanup (Optional, can be deferred) ---
+        // chunksToRemove.forEach(key => {
+        //   const chunk = generatedChunks.get(key);
+        //   scene.remove(chunk);
+        //   // Dispose logic...
+        //   generatedChunks.delete(key);
+        // });
+      }
+
+      function forceOpening(
+        chunkGroup,
+        direction,
+        gridCount,
+        cellSize,
+        random
+      ) {
+        const wallIndex = Math.floor(random() * gridCount);
+        let wall;
+        let x, z;
+
+        if (direction === "north") {
+          x = wallIndex * cellSize + cellSize / 2;
+          z = 0;
+        } else if (direction === "south") {
+          x = wallIndex * cellSize + cellSize / 2;
+          z = CHUNK_SIZE;
+        } else if (direction === "west") {
+          x = 0;
+          z = wallIndex * cellSize + cellSize / 2;
+        } else {
+          // east
+          x = CHUNK_SIZE;
+          z = wallIndex * cellSize + cellSize / 2;
+        }
+
+        let found = false;
+        objects.forEach((obj) => {
+          if (found) return;
+          if (
+            obj.parent === chunkGroup &&
+            Math.abs(obj.position.x - x) < 0.1 &&
+            Math.abs(obj.position.z - z) < 0.1
+          ) {
+            chunkGroup.remove(obj);
+            const index = objects.indexOf(obj);
+            if (index > -1) objects.splice(index, 1);
+            obj.geometry.dispose();
+            found = true;
+          }
+        });
+      }
+
+      // --- Item Logic ---
+      function spawnItem(itemName, position, parent) {
+        const item = ITEMS[itemName];
+        if (!item) return;
+
+        let geometry, material;
+        if (itemName === "flashlight") {
+          geometry = new THREE.CylinderGeometry(0.04, 0.04, 0.2, 12);
+          material = new THREE.MeshStandardMaterial({
+            color: 0x555555,
+            metalness: 0.8,
+            roughness: 0.3,
+          });
+        } else if (itemName === "almond_water") {
+          geometry = new THREE.CylinderGeometry(0.05, 0.05, 0.25, 12);
+          material = new THREE.MeshStandardMaterial({
+            color: 0x87ceeb,
+            roughness: 0.2,
+            metalness: 0.1,
+          });
+        } else if (itemName === "battery") {
+          // NEW
+          geometry = new THREE.BoxGeometry(0.06, 0.1, 0.03);
+          material = new THREE.MeshStandardMaterial({
+            color: 0x008000,
+            metalness: 0.2,
+            roughness: 0.6,
+          });
+        }
+
+        const itemMesh = new THREE.Mesh(geometry, material);
+        itemMesh.position.copy(position);
+        itemMesh.rotation.x = -Math.PI / 2;
+        itemMesh.castShadow = true;
+        itemMesh.userData.itemName = itemName;
+        parent.add(itemMesh);
+        interactableItems.push(itemMesh);
+      }
+
+      function pickupItem(itemMesh) {
+        const itemName = itemMesh.userData.itemName;
+        const success = addItemToInventory(itemName, 1);
+
+        if (success) {
+          // Remove from scene
+          itemMesh.parent.remove(itemMesh);
+          let index = interactableItems.indexOf(itemMesh);
+          if (index > -1) interactableItems.splice(index, 1);
+          // Dispose
+          itemMesh.geometry.dispose();
+          itemMesh.material.dispose();
+
+          showInteractionPrompt(`Picked up ${ITEMS[itemName].name}`, 2000);
+          updateInventoryUI();
+          updateHotbarUI();
+        } else {
+          showInteractionPrompt(`Inventory full`, 2000);
+        }
+      }
+
+      // --- Inventory Logic ---
+      function addItemToInventory(itemName, quantity) {
+        const itemDef = ITEMS[itemName];
+        if (!itemDef) return false;
+
+        // Try stacking first
+        if (itemDef.stackable) {
+          for (let i = 0; i < inventory.length; i++) {
+            const item = inventory[i];
+            if (
+              item &&
+              item.name === itemName &&
+              item.quantity < itemDef.maxStack
+            ) {
+              item.quantity += quantity;
+              if (item.quantity > itemDef.maxStack) {
+                const remaining = item.quantity - itemDef.maxStack;
+                item.quantity = itemDef.maxStack;
+                return addItemToInventory(itemName, remaining); // Add remainder
+              }
+              return true; // Stacked successfully
+            }
+          }
+        }
+
+        // Try finding an empty slot
+        const emptySlot = inventory.indexOf(null);
+        if (emptySlot > -1) {
+          inventory[emptySlot] = {
+            name: itemName,
+            quantity: quantity,
+          };
+          return true; // Added to empty slot
+        }
+
+        return false; // No space
+      }
+
+      function toggleInventory() {
+        inventoryOpen = !inventoryOpen;
+        if (inventoryOpen) {
+          controls.unlock();
+          inventoryScreen.style.display = "flex";
+          blocker.style.display = "none";
+          gameRunning = false; // Pause game logic
+          humSound.setVolume(0.0);
+          if (scp173AudioScrape.isPlaying) scp173AudioScrape.stop();
+          updateInventoryUI();
+        } else {
+          controls.lock();
+          inventoryScreen.style.display = "none";
+          selectedInventorySlot = -1;
+        }
+      }
+
+      function updateInventoryUI() {
+        const slots = inventoryGrid.children;
+        for (let i = 0; i < slots.length; i++) {
+          const slot = slots[i];
+          const item = inventory[i];
+
+          if (item) {
+            slot.innerHTML = `
+              <span class="item-name">${ITEMS[item.name].name}</span>
+              ${
+                item.quantity > 1
+                  ? `<span class="item-quantity">${item.quantity}</span>`
+                  : ""
+              }
+            `;
+            slot.classList.remove("empty");
+          } else {
+            slot.innerHTML = `[Empty]`;
+            slot.classList.add("empty");
+          }
+
+          if (i === selectedInventorySlot) {
+            slot.classList.add("selected");
+          } else {
+            slot.classList.remove("selected");
+          }
+        }
+
+        // Update button states
+        const selectedItem =
+          selectedInventorySlot > -1 ? inventory[selectedInventorySlot] : null;
+        invUseButton.disabled = !selectedItem;
+        invDropButton.disabled = !selectedItem;
+        invHotbarButtons.forEach((btn) => (btn.disabled = !selectedItem));
+      }
+
+      function updateHotbarUI() {
+        for (let i = 0; i < hotbarItems.length; i++) {
+          const item = hotbarItems[i];
+          const slot = hotbar[i];
+
+          if (item) {
+            slot.innerHTML = `
+              <span class="hotkey-label">${i + 1}</span>
+              <span class="item-name">${ITEMS[item.name].name}</span>
+              ${
+                item.quantity > 0
+                  ? `<span class="item-quantity">${item.quantity}</span>`
+                  : ""
+              }
+            `;
+          } else {
+            slot.innerHTML = `
+              <span class="hotkey-label">${i + 1}</span>
+            `;
+          }
+        }
+      }
+
+      function selectInventorySlot(index) {
+        selectedInventorySlot = index;
+        updateInventoryUI();
+      }
+
+      function useInventoryItem() {
+        if (selectedInventorySlot < 0) return;
+        const item = inventory[selectedInventorySlot];
+        if (item) {
+          const itemDef = ITEMS[item.name];
+          if (itemDef.use) {
+            itemDef.use(item, selectedInventorySlot, "inventory");
+            updateInventoryUI();
+          }
+        }
+      }
+
+      function dropInventoryItem() {
+        if (selectedInventorySlot < 0) return;
+        const item = inventory[selectedInventorySlot];
+        if (item) {
+          // Spawn item in front of player
+          const dropPos = camera.position
+            .clone()
+            .add(
+              camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(1)
+            );
+          dropPos.y = 0.1; // On the floor
+
+          const playerChunkX = Math.floor(dropPos.x / CHUNK_SIZE);
+          const playerChunkZ = Math.floor(dropPos.z / CHUNK_SIZE);
+          const chunkKey = `${playerChunkX},${playerChunkZ}`;
+          const chunk = generatedChunks.get(chunkKey);
+
+          if (chunk) {
+            // Adjust position to be relative to the chunk
+            dropPos.sub(chunk.position);
+            spawnItem(item.name, dropPos, chunk);
+            inventory[selectedInventorySlot] = null;
+            selectedInventorySlot = -1;
+            updateInventoryUI();
+          }
+        }
+      }
+
+      function moveToHotbar(hotbarIndex) {
+        if (selectedInventorySlot < 0) return;
+        const itemFromInv = inventory[selectedInventorySlot];
+        if (!itemFromInv) return;
+
+        const itemInHotbar = hotbarItems[hotbarIndex];
+
+        // Swap
+        hotbarItems[hotbarIndex] = itemFromInv;
+        inventory[selectedInventorySlot] = itemInHotbar; // Can be null
+
+        selectedInventorySlot = -1;
+        updateInventoryUI();
+        updateHotbarUI();
+      }
+
+      function selectHotbarSlot(index) {
+        hotbar[selectedHotbarSlot].classList.remove("selected");
+        selectedHotbarSlot = index;
+        hotbar[selectedHotbarSlot].classList.add("selected");
+      }
+
+      function useHotbarItem() {
+        const item = hotbarItems[selectedHotbarSlot];
+        if (item) {
+          const itemDef = ITEMS[item.name];
+          if (itemDef.use) {
+            itemDef.use(item, selectedHotbarSlot, "hotbar");
+            updateHotbarUI(); // Update quantities
+          }
+        }
+      }
+
+      // --- Flashlight Logic ---
+      function toggleFlashlight() {
+        if (flashlight.intensity > 0) {
+          flashlight.intensity = 0.0;
+        } else {
+          if (playerBattery > 0) {
+            flashlight.intensity = 1.0;
+          }
+        }
+      }
+
+      // --- Main Loop ---
+      function animate() {
+        if (!gameRunning) return;
+
+        requestAnimationFrame(animate);
+
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+
+        if (delta > 0.1) {
+          console.warn("Large delta spike:", delta);
+          prevTime = time;
+          return;
+        }
+
+        // --- Player Movement ---
+        camera.updateMatrixWorld(); // <-- FIX: Ensure camera matrix is up-to-date
+        const height = isCrouching ? playerCrouchHeight : playerHeight;
+
+        // --- MOVEMENT FIX START ---
+        // 1. Calculate intentions (local space)
+        playerVelocity.x = 0;
+        playerVelocity.z = 0;
+        playerVelocity.y -= playerGravity * delta;
+
+        playerDirection.z = Number(moveForward) - Number(moveBackward); // 1 for W, -1 for S
+        playerDirection.x = Number(moveRight) - Number(moveLeft); // 1 for D, -1 for A
+
+        if (playerDirection.lengthSq() > 0) {
+          playerDirection.normalize();
+        }
+
+        const currentSpeed = isCrouching
+          ? playerCrouchSpeed
+          : isSprinting && playerStamina > 0
+          ? playerSprintSpeed
+          : playerSpeed;
+
+        if (
+          isSprinting &&
+          (moveForward || moveBackward || moveLeft || moveRight)
+        ) {
+          playerStamina -= 20 * delta;
+          if (playerStamina < 0) playerStamina = 0;
+        } else if (playerStamina < maxStamina) {
+          playerStamina += 10 * delta;
+          if (playerStamina > maxStamina) playerStamina = maxStamina;
+        }
+
+        // Calculate local-space distances
+        const localMoveZ = playerDirection.z * currentSpeed * delta;
+        const localMoveX = playerDirection.x * currentSpeed * delta;
+
+        // 2. Get World-Space Movement Vectors
+
+        // Get local Z (forward) vector scaled by distance
+        _vector.setFromMatrixColumn(camera.matrix, 0); // local X
+        _vector.crossVectors(camera.up, _vector); // local Z (forward)
+        moveVectorForward.copy(_vector).multiplyScalar(localMoveZ);
+
+        // Get local X (right) vector scaled by distance
+        _vector.setFromMatrixColumn(camera.matrix, 0); // local X
+        moveVectorRight.copy(_vector).multiplyScalar(localMoveX);
+
+        // --- Ground Check & Collision (REWRITTEN) ---
+
+        // 3. Y-Axis (Vertical) Collision
+        const prevY = camera.position.y; // Get Y *before* adding velocity
+        camera.position.y += playerVelocity.y * delta;
+        canJump = false; // Assume we're falling unless we hit a floor
+        const playerFeetPrev = prevY - height; // Get *previous* feet position
+
+        let playerBoxY = new THREE.Box3(
+          new THREE.Vector3(
+            camera.position.x - playerRadius,
+            camera.position.y - height,
+            camera.position.z - playerRadius
+          ),
+          new THREE.Vector3(
+            camera.position.x + playerRadius,
+            camera.position.y,
+            camera.position.z + playerRadius
+          )
+        );
+
+        for (const object of objects) {
+          if (
+            !object ||
+            !object.visible ||
+            !object.parent ||
+            !object.parent.visible ||
+            object === scp173Mesh
+          )
+            continue;
+          if (!object.geometry || !object.geometry.boundingBox) continue;
+          if (object.userData.isDoor && object.userData.isOpen) continue;
+
+          object.updateMatrixWorld();
+          const objectBox = object.geometry.boundingBox
+            .clone()
+            .applyMatrix4(object.matrixWorld);
+
+          if (playerBoxY.intersectsBox(objectBox)) {
+            if (object.userData.isDeathPlane) {
+              endGame(false);
+              break;
+            }
+            if (object.userData.isExit) {
+              endGame(true);
+              break;
+            }
+
+            // Check if we are landing on top of it
+            if (playerVelocity.y < 0 && playerFeetPrev >= objectBox.max.y) {
+              camera.position.y = objectBox.max.y + height; // Correct position to be on top
+              playerVelocity.y = 0;
+              canJump = true;
+            } else if (
+              playerVelocity.y > 0 &&
+              playerBoxY.max.y > objectBox.min.y &&
+              playerBoxY.max.y < objectBox.max.y
+            ) {
+              // Jumping into something
+              camera.position.y = objectBox.min.y - 0.01; // Correct position to be below
+              playerVelocity.y = 0;
+            }
+          }
+        }
+
+        // 4. X-Axis (Horizontal) Collision (Local Right/Left)
+        let playerBoxX = new THREE.Box3(
+          new THREE.Vector3(
+            camera.position.x - playerRadius,
+            camera.position.y - height,
+            camera.position.z - playerRadius
+          ),
+          new THREE.Vector3(
+            camera.position.x + playerRadius,
+            camera.position.y,
+            camera.position.z + playerRadius
+          )
+        );
+
+        for (const object of objects) {
+          if (
+            !object ||
+            !object.visible ||
+            !object.parent ||
+            !object.parent.visible ||
+            object === scp173Mesh
+          )
+            continue;
+          if (!object.geometry || !object.geometry.boundingBox) continue;
+          if (object.userData.isDoor && object.userData.isOpen) continue;
+          if (object.userData.isDeathPlane || object.userData.isExit) continue;
+
+          object.updateMatrixWorld();
+          const objectBox = object.geometry.boundingBox
+            .clone()
+            .applyMatrix4(object.matrixWorld);
+
+          // --- FIX: Skip floors for horizontal collision ---
+          if (objectBox.max.y <= 0.01) continue; // If object's top is at or below floor level, skip it
+
+          // Check against the *anticipated* move
+          const anticipatedBoxX = playerBoxX.clone().translate(moveVectorRight);
+
+          if (anticipatedBoxX.intersectsBox(objectBox)) {
+            moveVectorRight.set(0, 0, 0); // Stop this movement
+            break; // Stop checking on this axis
+          }
+        }
+        // Apply the (potentially) corrected X movement
+        camera.position.add(moveVectorRight);
+
+        // 5. Z-Axis (Horizontal) Collision (Local Forward/Backward)
+        // Get the *current* player box after X-movement
+        let playerBoxZ = new THREE.Box3(
+          new THREE.Vector3(
+            camera.position.x - playerRadius,
+            camera.position.y - height,
+            camera.position.z - playerRadius
+          ),
+          new THREE.Vector3(
+            camera.position.x + playerRadius,
+            camera.position.y,
+            camera.position.z + playerRadius
+          )
+        );
+
+        for (const object of objects) {
+          if (
+            !object ||
+            !object.visible ||
+            !object.parent ||
+            !object.parent.visible ||
+            object === scp173Mesh
+          )
+            continue;
+          if (!object.geometry || !object.geometry.boundingBox) continue;
+          if (object.userData.isDoor && object.userData.isOpen) continue;
+          if (object.userData.isDeathPlane || object.userData.isExit) continue;
+
+          object.updateMatrixWorld();
+          const objectBox = object.geometry.boundingBox
+            .clone()
+            .applyMatrix4(object.matrixWorld);
+
+          // --- FIX: Skip floors for horizontal collision ---
+          if (objectBox.max.y <= 0.01) continue; // If object's top is at or below floor level, skip it
+
+          // Check against the *anticipated* move
+          const anticipatedBoxZ = playerBoxZ
+            .clone()
+            .translate(moveVectorForward);
+
+          if (anticipatedBoxZ.intersectsBox(objectBox)) {
+            moveVectorForward.set(0, 0, 0); // Stop movement on this axis
+            break; // Stop checking on this axis
+          }
+        }
+        // Apply the (potentially) corrected Z movement
+        camera.position.add(moveVectorForward);
+
+        // --- MOVEMENT FIX END ---
+
+        prevTime = time;
+
+        // --- Update Game Logic ---
+        updateVisibleChunks();
+        updateWorld(delta);
+        checkInteractions();
+        updateSCP173(delta); // NEW
+
+        // --- Blink Logic ---
+        if (isBlinking) {
+          blinkAnimationTimer -= delta;
+          const progress = 1.0 - blinkAnimationTimer / blinkDuration;
+          if (progress < 0.5) {
+            blinkOverlay.style.opacity = progress * 2; // Fade in
+          } else {
+            blinkOverlay.style.opacity = (1.0 - progress) * 2; // Fade out
+          }
+          if (blinkAnimationTimer <= 0) {
+            endBlink();
+          }
+        } else {
+          playerBlinkTimer -= delta;
+          if (playerBlinkTimer <= 0) {
+            startBlink(true);
+          }
+        }
+
+        // --- Flashlight Battery ---
+        if (flashlight.intensity > 0) {
+          playerBattery -= flashlightDrainRate * delta;
+          if (playerBattery <= 0) {
+            playerBattery = 0;
+            toggleFlashlight(); // Turn off
+          }
+        }
+
+        // --- Update HUD ---
+        staminaBar.style.width = (playerStamina / maxStamina) * 100 + "%";
+        sanityBar.style.width = (playerSanity / maxSanity) * 100 + "%";
+        batteryBar.style.width = (playerBattery / maxBattery) * 100 + "%";
+        batteryLevel.textContent = `${Math.floor(playerBattery)}%`;
+        // MODIFIED: Invert blink bar display to show 0 -> 100% (filling up)
+        blinkBar.style.width =
+          ((maxBlinkTime - playerBlinkTimer) / maxBlinkTime) * 100 + "%";
+
+        sanityDrainTimer += delta;
+        if (sanityDrainTimer > 2.0) {
+          sanityDrainTimer = 0;
+          let drainAmount = 0.5;
+
+          let inLight = false;
+          if (flashlight.intensity > 0) {
+            inLight = true; // Flashlight provides light
+          } else {
+            const checkRangeSq = 8 * 8;
+            scene.traverse((obj) => {
+              if (
+                obj.isPointLight &&
+                obj.intensity > 0 &&
+                obj.visible &&
+                obj.parent &&
+                obj.parent.visible
+              ) {
+                const worldPos = new THREE.Vector3();
+                obj.getWorldPosition(worldPos);
+                if (
+                  worldPos.distanceToSquared(camera.position) < checkRangeSq
+                ) {
+                  inLight = true;
+                }
+              }
+            });
+          }
+
+          if (!inLight) drainAmount = 2.0;
+
+          if (isRedShiftActive) {
+            drainAmount *= 2.5;
+          }
+
+          // MODIFIED: Sanity drain from statue
+          if (
+            scp173Mesh &&
+            (scp173State === "HUNTING" || scp173State === "FROZEN")
+          ) {
+            const scpPos = new THREE.Vector3();
+            scp173Mesh.getWorldPosition(scpPos);
+            const distSq = camera.position.distanceToSquared(scpPos);
+
+            if (distSq < scp173DetectionRadius * scp173DetectionRadius) {
+              if (scp173State === "FROZEN") {
+                // NEW: Faster drain when looking at it
+                drainAmount += 3.0;
+              } else {
+                // Original drain when being hunted (but not seen)
+                drainAmount += 1.5;
+              }
+            }
+          }
+
+          playerSanity -= drainAmount;
+          if (playerSanity < 0) playerSanity = 0;
+
+          if (playerSanity <= 0) {
+            endGame(
+              false,
+              "You Lost Your Mind",
+              "The hum becomes unbearable..."
+            );
+          }
+        }
+
+        // --- Render ---
+        renderer.render(scene, camera);
+      }
+
+      function updateWorld(delta) {
+        scene.traverse((obj) => {
+          if (
+            obj.isPointLight &&
+            obj.userData.isFluorescent &&
+            obj.visible &&
+            obj.parent &&
+            obj.parent.visible
+          ) {
+            if (Math.random() < 0.05) {
+              obj.intensity = obj.userData.baseIntensity * Math.random() * 0.5;
+            } else {
+              obj.intensity = obj.userData.baseIntensity;
+            }
+          }
+          if (
+            obj.isPointLight &&
+            obj.userData.isExitLight &&
+            obj.visible &&
+            obj.parent &&
+            obj.parent.visible
+          ) {
+            obj.intensity =
+              (Math.sin(performance.now() * 0.005) + 1) *
+                (obj.userData.baseIntensity * 0.5) +
+              obj.userData.baseIntensity * 0.5;
+          }
+        });
+      }
+
+      // NEW: SCP-173 AI Logic
+      function updateSCP173(delta) {
+        if (!scp173Mesh || !gameRunning) return;
+
+        const playerPos = camera.position;
+        const scpWorldPos = new THREE.Vector3();
+        scp173Mesh.getWorldPosition(scpWorldPos); // Get world position
+
+        // DEBUG: Log current state and position
+        console.log(
+          `[SCP Update] State: ${scp173State}, Pos: ${scpWorldPos.x.toFixed(
+            1
+          )}, ${scpWorldPos.z.toFixed(1)}`
+        );
+
+        scpWorldPos.y = playerHeight; // Check against player's eye level
+        const distSq = playerPos.distanceToSquared(scpWorldPos);
+
+        // DEBUG: Log distance
+        console.log(
+          `[SCP Update] Dist to player: ${Math.sqrt(distSq).toFixed(1)}m`
+        );
+
+        // 1. Check if player is in detection radius
+        if (distSq > scp173DetectionRadius * scp173DetectionRadius) {
+          scp173State = "IDLE";
+          if (scp173AudioScrape.isPlaying) scp173AudioScrape.stop();
+
+          // NEW: Teleport Logic
+          scp173TeleportCooldown -= delta;
+          // DEBUG: Log idle state
+          console.log(
+            `[SCP Update] IDLE. Teleport in: ${scp173TeleportCooldown.toFixed(
+              1
+            )}s`
+          );
+          if (scp173TeleportCooldown <= 0) {
+            teleportSCP173(false); // Teleport closer
+            scp173TeleportCooldown = SCP173_TELEPORT_TIMER;
+          }
+          return; // Too far away
+        }
+
+        // If it's hunting, reset the "teleport closer" timer
+        scp173TeleportCooldown = SCP173_TELEPORT_TIMER;
+
+        // 2. Line of Sight Check
+        let canSeeSCP = false;
+        const directionToSCP = scpWorldPos.clone().sub(playerPos).normalize();
+        const cameraDir = camera.getWorldDirection(new THREE.Vector3());
+        const angle = cameraDir.angleTo(directionToSCP);
+
+        // Check if SCP is within the camera's Field of View
+        // MODIFIED: Added !isBlinking check
+        if (!isBlinking && angle < (camera.fov * (Math.PI / 180)) / 2) {
+          const raycaster = new THREE.Raycaster(playerPos, directionToSCP);
+          // MODIFIED: Raycast against all scene children recursively
+          const intersects = raycaster.intersectObjects(scene.children, true);
+
+          // --- REWRITTEN SCP VISION LOGIC ---
+          if (intersects.length > 0) {
+            let hitObject = intersects[0].object;
+            let isSCP = false;
+
+            // Traverse up the object's parents to see if it's part of the SCP
+            while (hitObject.parent && hitObject !== scene) {
+              if (hitObject.userData.isSCP173) {
+                isSCP = true;
+                break;
+              }
+              hitObject = hitObject.parent;
+            }
+
+            // Final check in case the main group itself was hit
+            if (hitObject.userData.isSCP173) {
+              isSCP = true;
+            }
+
+            // If the *very first thing* we hit is part of the SCP, we can see it.
+            // If the first hit is a wall, door, etc., isSCP will be false.
+            if (isSCP) {
+              canSeeSCP = true;
+            } else {
+              canSeeSCP = false; // Hit a wall or other object first
+            }
+          }
+          // --- END OF REWRITTEN LOGIC ---
+        }
+
+        // DEBUG: Log sight check
+        console.log(
+          `[SCP Update] CanSeeSCP: ${canSeeSCP}, isBlinking: ${isBlinking}, Angle: ${angle.toFixed(
+            2
+          )}`
+        );
+
+        // 3. State Update
+        if (canSeeSCP) {
+          scp173State = "FROZEN";
+          if (scp173AudioScrape.isPlaying) scp173AudioScrape.stop();
+          // DEBUG: Log frozen state
+          console.log(`[SCP Update] FROZEN.`);
+        } else {
+          scp173State = "HUNTING";
+          if (!scp173AudioScrape.isPlaying) scp173AudioScrape.play();
+        }
+
+        // 4. Movement
+        if (scp173State === "HUNTING") {
+          // Move towards player
+          const moveDir = playerPos.clone().sub(scpWorldPos).normalize();
+          const moveAmount = moveDir.multiplyScalar(scp173Speed * delta);
+          moveAmount.y = 0; // Don't move vertically
+
+          // Simple collision avoidance
+          const oldScpPos = scp173Mesh.position.clone();
+
+          scp173Mesh.position.x += moveAmount.x;
+          if (checkSCPCollision()) {
+            scp173Mesh.position.x = oldScpPos.x;
+          }
+
+          scp173Mesh.position.z += moveAmount.z;
+          if (checkSCPCollision()) {
+            scp173Mesh.position.z = oldScpPos.z;
+          }
+
+          // Look at player (Y-axis only)
+          scp173Mesh.lookAt(playerPos.x, scp173Mesh.position.y, playerPos.z);
+          scp173Mesh.updateMatrixWorld(); // Update matrix after moving
+
+          // NEW: Stuck Timer Logic
+          const distanceMovedSq =
+            scp173Mesh.position.distanceToSquared(scp173LastPosition);
+          if (distanceMovedSq < 0.001) {
+            // It's not moving
+            scp173StuckTimer -= delta;
+            if (scp173StuckTimer <= 0) {
+              console.log("SCP-173 is stuck, teleporting away...");
+              teleportSCP173(true); // Teleport away
+              scp173StuckTimer = SCP173_STUCK_TELEPORT_TIMER; // Reset timer
+            }
+          } else {
+            // It's moving, reset stuck timer
+            scp173StuckTimer = SCP173_STUCK_TELEPORT_TIMER;
+          }
+          scp173LastPosition.copy(scp173Mesh.position);
+
+          // DEBUG: Log hunting state
+          console.log(
+            `[SCP Update] HUNTING. Stuck timer: ${scp173StuckTimer.toFixed(1)}s`
+          );
+
+          // 5. Kill Check
+          // Re-check distance after moving
+          scp173Mesh.getWorldPosition(scpWorldPos);
+          if (playerPos.distanceToSquared(scpWorldPos) < scp173KillRangeSq) {
+            endGame(
+              false,
+              "You Blinked",
+              "You hear a snap as your neck breaks."
+            );
+          }
+        }
+      }
+
+      // NEW: Blink Functions
+      function startBlink(isForced) {
+        if (isBlinking) return;
+        isBlinking = true;
+        blinkAnimationTimer = blinkDuration;
+        blinkOverlay.style.display = "block";
+      }
+
+      function endBlink() {
+        isBlinking = false;
+        blinkOverlay.style.display = "none";
+        blinkOverlay.style.opacity = 0;
+        playerBlinkTimer = maxBlinkTime; // Reset timer
+      }
+
+      // NEW: Refactored Teleport Logic
+      function teleportSCP173(isTeleportingAway) {
+        const random = Math.random;
+        const playerChunkX = Math.floor(camera.position.x / CHUNK_SIZE);
+        const playerChunkZ = Math.floor(camera.position.z / CHUNK_SIZE);
+
+        let dx, dz;
+        if (isTeleportingAway) {
+          // Teleport 2-3 chunks away
+          const dist = Math.floor(random() * 2) + 2; // 2 or 3
+          dx = (random() > 0.5 ? 1 : -1) * dist;
+          dz = (random() > 0.5 ? 1 : -1) * dist;
+        } else {
+          // Teleport to an adjacent chunk
+          dx = Math.floor(random() * 3) - 1; // -1, 0, 1
+          dz = Math.floor(random() * 3) - 1; // -1, 0, 1
+          if (dx === 0 && dz === 0) {
+            dz = 1; // Don't teleport to player's own chunk
+          }
+        }
+
+        const targetChunkX = playerChunkX + dx;
+        const targetChunkZ = playerChunkZ + dz;
+        const targetChunkKey = `${targetChunkX},${targetChunkZ}`;
+
+        if (!generatedChunks.has(targetChunkKey)) {
+          generateChunk(targetChunkX, targetChunkZ);
+        }
+        const targetChunk = generatedChunks.get(targetChunkKey);
+
+        // Only teleport to valid, non-pitfall, non-exit chunks
+        if (
+          targetChunk &&
+          !targetChunk.userData.isPitfallChunk &&
+          !targetChunk.userData.isExitChunk
+        ) {
+          if (scp173Mesh.parent) {
+            scp173Mesh.parent.remove(scp173Mesh);
+          }
+          targetChunk.add(scp173Mesh);
+          // Spawn in a random cell within the chunk
+          const isHallway = targetChunk.userData.isSecurityHallway;
+          const gridDiv = isHallway ? 1 : 5;
+          const cellSize = CHUNK_SIZE / gridDiv;
+          const spawnCellX = Math.floor(random() * gridDiv);
+          const spawnCellZ = Math.floor(random() * gridDiv);
+          scp173Mesh.position.set(
+            spawnCellX * cellSize + cellSize / 2,
+            0,
+            spawnCellZ * cellSize + cellSize / 2
+          );
+          scp173LastPosition.copy(scp173Mesh.position); // Update last pos
+          scp173StuckTimer = SCP173_STUCK_TELEPORT_TIMER; // Reset stuck timer
+          console.warn(
+            // MODIFIED: Made log more visible
+            `[SCP TELEPORT] SCP-173 teleported to chunk: ${targetChunkKey} (Away: ${isTeleportingAway})`
+          );
+        } else {
+          // Failed to find valid chunk, try again sooner
+          if (isTeleportingAway) {
+            scp173StuckTimer = 1.0;
+          } else {
+            scp173TeleportCooldown = 1.0;
+          }
+        }
+      }
+
+      // NEW: Collision check for SCP-173
+      function checkSCPCollision() {
+        scp173Mesh.updateMatrixWorld();
+        const scpBox = scp173Mesh.geometry.boundingBox
+          .clone()
+          .applyMatrix4(scp173Mesh.matrixWorld);
+
+        for (let i = 0; i < objects.length; i++) {
+          const object = objects[i];
+          if (
+            !object ||
+            !object.visible ||
+            !object.parent ||
+            !object.parent.visible
+          )
+            continue;
+
+          // NEW: Check for closed doors
+          if (object.userData.isDoor && object.userData.isOpen) {
+            continue; // Can pass through open doors
+          }
+
+          // Skip self, death planes, exits
+          if (
+            object.userData.isSCP173 ||
+            object === scp173Mesh ||
+            object.userData.isDeathPlane ||
+            object.userData.isExit
+          )
+            continue;
+
+          if (!object.geometry || !object.geometry.boundingBox) continue;
+
+          object.updateMatrixWorld();
+          const objectBox = object.geometry.boundingBox
+            .clone()
+            .applyMatrix4(object.matrixWorld);
+
+          // --- FIX: Skip floors for horizontal collision ---
+          if (objectBox.max.y <= 0.01) continue; // If object's top is at or below floor level, skip it
+
+          if (scpBox.intersectsBox(objectBox)) {
+            return object; // Collision
+          }
+        }
+        return null; // No collision
+      }
+
+      function checkInteractions() {
+        if (inventoryOpen) {
+          interactionPrompt.style.display = "none";
+          return;
+        }
+
+        const raycaster = new THREE.Raycaster(
+          camera.position,
+          camera.getWorldDirection(new THREE.Vector3())
+        );
+        const intersects = raycaster.intersectObjects(interactableItems, true); // Recursive check
+
+        let foundInteractable = false;
+        if (intersects.length > 0 && intersects[0].distance < 3) {
+          let item = intersects[0].object;
+
+          // Check if it's part of a door
+          if (item.userData.isDoorPart) {
+            item = item.parent; // Get the main door group (was item.parent.parent)
+          }
+
+          let objVisible = item.visible;
+          let parent = item.parent;
+          while (parent && parent !== scene) {
+            if (!parent.visible) {
+              objVisible = false;
+              break;
+            }
+            parent = parent.parent;
+          }
+
+          if (objVisible) {
+            if (item.userData.itemName) {
+              const itemName = item.userData.itemName;
+              showInteractionPrompt(`Click to pick up ${ITEMS[itemName].name}`);
+              foundInteractable = true;
+            } else if (item.userData.isDoor) {
+              // NEW: Door prompt
+              const action = item.userData.isOpen ? "Close" : "Open";
+              showInteractionPrompt(`Click to ${action} Door`);
+              foundInteractable = true;
+            }
+          }
+        }
+
+        if (!foundInteractable) {
+          interactionPrompt.style.display = "none";
+        }
+      }
+
+      function showInteractionPrompt(text, duration = null) {
+        interactionPrompt.innerHTML = text.replace(
+          /\[(\w+)\]/g,
+          '<span class="key">$1</span>'
+        );
+        interactionPrompt.style.display = "block";
+
+        if (duration) {
+          setTimeout(() => {
+            if (
+              interactionPrompt.style.display === "block" &&
+              interactionPrompt.innerHTML.includes(text.split(" ")[0])
+            ) {
+              interactionPrompt.style.display = "none";
+            }
+          }, duration);
+        }
+      }
+
+      // MODIFIED: Added custom messages
+      function endGame(isWin, title = "You Fell", message = "You are lost.") {
+        gameWon = isWin;
+        gameRunning = false;
+        controls.unlock();
+
+        hud.style.display = "none";
+        crosshair.style.display = "none";
+        hotbar[0].parentElement.style.display = "none";
+        blocker.style.display = "none";
+        inventoryScreen.style.display = "none";
+
+        if (scp173AudioScrape && scp173AudioScrape.isPlaying) {
+          scp173AudioScrape.stop();
+        }
+
+        if (isWin) {
+          gameWinScreen.style.display = "flex";
+        } else {
+          gameOverScreen.querySelector("h1").textContent = title;
+          gameOverScreen.querySelector("p").innerHTML = message.replace(
+            "\n",
+            "<br/>"
+          );
+          gameOverScreen.style.display = "flex";
+        }
+      }
+
+      function triggerLevelLoad(levelName, messageTitle, messageBody) {
+        if (gameWon) return;
+
+        console.log(`Exit triggered! Loading ${levelName}...`);
+
+        gameRunning = false;
+        gameWon = true;
+        controls.unlock();
+
+        if (scp173AudioScrape && scp173AudioScrape.isPlaying) {
+          scp173AudioScrape.stop();
+        }
+
+        blocker.style.display = "flex";
+        instructions.style.display = "block";
+        instructions.style.cursor = "default";
+        instructions.innerHTML = `<h1>${messageTitle}</h1><p>${messageBody}</p>`;
+
+        setTimeout(() => {
+          try {
+            window.location.href = levelName;
+          } catch (e) {
+            console.error(
+              `Redirect to ${levelName} failed (likely due to sandbox):`,
+              e
+            );
+            instructions.innerHTML = `<h1>${messageTitle}</h1><p>Redirect to ${levelName} failed. Please create '${levelName}'.</p>`;
+          }
+        }, 2500);
+      }
+    </script>
+  </body>
+</html>

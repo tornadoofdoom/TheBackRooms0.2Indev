@@ -1,0 +1,3116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Backrooms</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #ffff00;
+        font-family: "Courier New", Courier, monospace;
+      }
+      #container {
+        position: relative;
+        text-align: center;
+        width: 100%;
+        height: 100%;
+      }
+      canvas {
+        display: block;
+        cursor: pointer;
+      }
+      .menu {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        padding: 30px;
+        border-radius: 15px;
+        border: 2px solid #333;
+        width: 300px;
+        text-align: center;
+        flex-direction: column;
+        z-index: 10;
+      }
+      .menu h1 {
+        margin-top: 0;
+        color: #ff0000;
+        text-shadow: 0 0 8px #ff0000;
+      }
+      .menu-button {
+        display: block;
+        width: 100%;
+        padding: 15px;
+        margin: 10px 0;
+        font-size: 20px;
+        cursor: pointer;
+        background-color: #222;
+        color: #ffff00;
+        border: 1px solid #ffff00;
+        border-radius: 5px;
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .menu-button:hover {
+        background-color: #ffff00;
+        color: #000;
+      }
+      #instructions {
+        display: none;
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 16px;
+        z-index: 5;
+      }
+      #level-complete-menu {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.9);
+        padding: 40px;
+        border-radius: 10px;
+        border: 1px solid #ffff00;
+        text-align: center;
+        z-index: 100;
+      }
+      #gameOverMenu h1 {
+        color: #ff0000;
+      }
+
+      #fade-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.5s ease-in-out;
+        z-index: 101;
+      }
+
+      /* --- Inventory UI Styles --- */
+      #hotbar {
+        display: none;
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 5px;
+        z-index: 5;
+      }
+      .inventory-slot {
+        width: 50px;
+        height: 50px;
+        background-color: rgba(0, 0, 0, 0.5);
+        border: 2px solid #555;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        image-rendering: pixelated;
+      }
+      .inventory-slot.active {
+        border-color: #ffff00;
+        box-shadow: 0 0 10px #ffff00;
+      }
+
+      #inventory-grid {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 204px; /* (50px slot + 4px border + 10px gap) * 3 - 10px */
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.8);
+        border: 2px solid #333;
+        z-index: 10;
+        user-select: none;
+      }
+      #inventory-grid .inventory-slot {
+        margin: 0;
+      }
+
+      #pickup-prompt {
+        display: none;
+        position: absolute;
+        bottom: 30%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-size: 18px;
+        z-index: 5;
+      }
+
+      /* --- Player Status Bars --- */
+      .status-bar-container {
+        display: none;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        height: 15px;
+        background-color: rgba(0, 0, 0, 0.5);
+        border: 1px solid #555;
+        border-radius: 5px;
+        z-index: 5;
+      }
+      .status-bar {
+        width: 100%;
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.1s linear;
+      }
+      #stamina-bar-container {
+        bottom: 80px;
+      }
+      #stamina-bar {
+        background-color: #ffff00; /* Yellow */
+      }
+      #sanity-bar-container {
+        bottom: 100px;
+      }
+      #sanity-bar {
+        background-color: #4169e1; /* Royal Blue */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <canvas id="mazeCanvas"></canvas>
+      <div id="fade-overlay"></div>
+      <div id="mainMenu" class="menu" style="display: flex">
+        <h1 style="color: #ffff00">The Backrooms</h1>
+        <button id="startBtn" class="menu-button">Enter</button>
+        <p style="font-size: 12px; color: #ccc; margin-top: 20px">
+          If you're not careful and you noclip out of reality in the wrong
+          areas, you'll end up in the Backrooms...
+        </p>
+      </div>
+      <div id="levelSelectMenu" class="menu">
+        <h1 style="color: #ffff00">Select Level</h1>
+        <button class="level-btn menu-button" data-level="0">
+          Level 0 - The Lobby
+        </button>
+        <button class="level-btn menu-button" data-level="1">
+          Level 0.1 - The Red Rooms
+        </button>
+        <button class="level-btn menu-button" data-level="2">
+          Level 1 - Parking Garage
+        </button>
+        <button class="level-btn menu-button" data-level="3">
+          Level 2 - Pipe Dreams
+        </button>
+        <button class="level-btn menu-button" data-level="4">
+          Level 4 - The Pool Rooms
+        </button>
+        <button
+          id="levelSelectBackBtn"
+          class="menu-button"
+          style="margin-top: 20px; background-color: #444"
+        >
+          Back
+        </button>
+      </div>
+      <!-- NEW: Instructions updated with Jump -->
+      <div id="instructions">
+        Click to Begin | WASD/Arrows: Move | Space: Jump | Shift: Sprint | Ctrl:
+        Crouch | Mouse: Look | E: Inventory | F: Interact | ESC: Pause
+      </div>
+      <div id="pauseMenu" class="menu">
+        <h1 style="color: #ffff00">Paused</h1>
+        <button id="resumeBtn" class="menu-button">Resume</button>
+        <button id="pauseBackToMenuBtn" class="menu-button">
+          Return to Main Menu
+        </button>
+      </div>
+      <div id="level-complete-menu">
+        <h1 style="color: #ffff00">You Escaped... For Now.</h1>
+        <button id="nextLevelBtn" class="menu-button">
+          Proceed to Next Level
+        </button>
+        <button id="completeBackToMenuBtn" class="menu-button">
+          Return to Main Menu
+        </button>
+      </div>
+      <div id="gameOverMenu" class="menu">
+        <h1>YOU DIED</h1>
+        <button id="retryBtn" class="menu-button">Retry</button>
+        <button id="gameOverBackToMenuBtn" class="menu-button">
+          Return to Main Menu
+        </button>
+      </div>
+      <!-- UI Elements -->
+      <div id="hotbar"></div>
+      <div id="inventory-grid" class="menu"></div>
+      <div id="pickup-prompt">Press [F] to pick up</div>
+      <div
+        id="action-buttons"
+        style="
+          display: none;
+          position: absolute;
+          bottom: 80px;
+          left: 50%;
+          transform: translateX(-50%);
+          flex-direction: column;
+          gap: 10px;
+          z-index: 5;
+          width: 120px;
+        "
+      >
+        <button
+          id="useBtn"
+          class="menu-button"
+          style="padding: 10px; font-size: 16px; margin: 0"
+        >
+          Use Item
+        </button>
+        <button
+          id="dropBtn"
+          class="menu-button"
+          style="padding: 10px; font-size: 16px; margin: 0"
+        >
+          Drop Item
+        </button>
+      </div>
+      <!-- Status Bars -->
+      <div id="stamina-bar-container" class="status-bar-container">
+        <div id="stamina-bar" class="status-bar"></div>
+      </div>
+      <div id="sanity-bar-container" class="status-bar-container">
+        <div id="sanity-bar" class="status-bar"></div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+      // --- 1. INITIAL SETUP & DOM ELEMENTS ---
+      const mainMenu = document.getElementById("mainMenu");
+      const levelSelectMenu = document.getElementById("levelSelectMenu");
+      const pauseMenu = document.getElementById("pauseMenu");
+      const instructions = document.getElementById("instructions");
+      const levelCompleteMenu = document.getElementById("level-complete-menu");
+      const gameOverMenu = document.getElementById("gameOverMenu");
+      const canvasElement = document.getElementById("mazeCanvas");
+      const hotbarElement = document.getElementById("hotbar");
+      const inventoryGridElement = document.getElementById("inventory-grid");
+      const pickupPromptElement = document.getElementById("pickup-prompt");
+      const actionButtonsElement = document.getElementById("action-buttons");
+      const useBtn = document.getElementById("useBtn");
+      const dropBtn = document.getElementById("dropBtn");
+      const fadeOverlay = document.getElementById("fade-overlay");
+      const staminaBarContainer = document.getElementById(
+        "stamina-bar-container"
+      );
+      const staminaBar = document.getElementById("stamina-bar");
+      const sanityBarContainer = document.getElementById(
+        "sanity-bar-container"
+      );
+      const sanityBar = document.getElementById("sanity-bar");
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer({
+        canvas: canvasElement,
+        antialias: true,
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+      const heldItemLight = new THREE.PointLight(0xffffff, 0.3, 2);
+      heldItemLight.position.set(0, 0, 0);
+      camera.add(heldItemLight);
+
+      let audioListener, backgroundHum;
+      function initAudio() {
+        audioListener = new THREE.AudioListener();
+        camera.add(audioListener);
+        backgroundHum = new THREE.Audio(audioListener);
+        const audioLoader = new THREE.AudioLoader();
+        // A simple base64 encoded hum sound to avoid external requests
+        const humSoundData =
+          "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+        audioLoader.load(humSoundData, (buffer) => {
+          backgroundHum.setBuffer(buffer);
+          backgroundHum.setLoop(true);
+          backgroundHum.setVolume(0.4);
+        });
+      }
+      initAudio();
+
+      // =================================================================================================
+      //
+      // --- 2. ITEM CONFIGURATION & "HOW-TO" GUIDE ---
+      //
+      // =================================================================================================
+      const ITEMS = {
+        flashlight: {
+          id: "flashlight",
+          name: "Flashlight",
+          isLightSource: true,
+          texture: () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#555";
+            ctx.fillRect(10, 5, 12, 22);
+            ctx.fillStyle = "#888";
+            ctx.fillRect(11, 6, 10, 4);
+            ctx.fillStyle = "#333";
+            ctx.fillRect(11, 23, 10, 3);
+            ctx.fillStyle = "#FFFF99";
+            ctx.beginPath();
+            ctx.arc(16, 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+            return canvas.toDataURL();
+          },
+          createModel: () => {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({
+              color: 0x555555,
+              roughness: 0.6,
+              metalness: 0.8,
+            });
+            const lensMat = new THREE.MeshStandardMaterial({
+              color: 0xffff99,
+              emissive: 0xaaaa00,
+              emissiveIntensity: 0.5,
+            });
+            const bodyGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 16);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            const headGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.15, 16);
+            const head = new THREE.Mesh(headGeo, bodyMat);
+            head.position.y = 0.325;
+            const lensGeo = new THREE.CircleGeometry(0.1, 16);
+            const lens = new THREE.Mesh(lensGeo, lensMat);
+            lens.position.y = 0.4;
+            lens.rotation.x = -Math.PI / 2;
+            group.add(body, head, lens);
+            group.rotation.x = Math.PI / 2;
+            return group;
+          },
+          onEquip: (scene, camera) => {
+            if (!camera.flashlight) {
+              const flashlight = new THREE.SpotLight(
+                0xffffee,
+                0,
+                50,
+                Math.PI / 7,
+                0.3,
+                2
+              );
+              flashlight.castShadow = true;
+              flashlight.shadow.mapSize.width = 1024;
+              flashlight.shadow.mapSize.height = 1024;
+              flashlight.shadow.camera.near = 0.5;
+              flashlight.shadow.camera.far = 60;
+              flashlight.position.set(0.1, -0.1, 0.2);
+              flashlight.target.position.set(0, 0, 1);
+              camera.add(flashlight);
+              camera.add(flashlight.target);
+              camera.flashlight = flashlight;
+              camera.flashlightOn = false;
+            }
+          },
+          onUnequip: (camera) => {
+            if (camera.flashlight) {
+              camera.flashlight.intensity = 0;
+              camera.flashlightOn = false;
+            }
+          },
+          onUse: (camera) => {
+            if (camera.flashlight) {
+              camera.flashlightOn = !camera.flashlightOn;
+              camera.flashlight.intensity = camera.flashlightOn ? 2.5 : 0;
+            }
+          },
+        },
+        almondWater: {
+          id: "almondWater",
+          name: "Almond Water",
+          texture: () => {
+            const c = document.createElement("canvas");
+            c.width = 32;
+            c.height = 32;
+            const ctx = c.getContext("2d");
+            ctx.fillStyle = "#F5DEB3";
+            ctx.fillRect(10, 4, 12, 24); // Bottle
+            ctx.fillStyle = "#89CFF0";
+            ctx.fillRect(11, 10, 10, 17); // Liquid
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(10, 2, 12, 3); // Cap
+            return c.toDataURL();
+          },
+          createModel: () => {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({
+              color: 0xf5deb3,
+              roughness: 0.1,
+              transparent: true,
+              opacity: 0.8,
+            });
+            const liquidMat = new THREE.MeshStandardMaterial({
+              color: 0x89cff0,
+              roughness: 0,
+            });
+            const capMat = new THREE.MeshStandardMaterial({
+              color: 0xffffff,
+              roughness: 0.5,
+            });
+            const bodyGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.4, 16);
+            const liquidGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.3, 16);
+            const capGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.1, 16);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            const liquid = new THREE.Mesh(liquidGeo, liquidMat);
+            liquid.position.y = -0.05;
+            const cap = new THREE.Mesh(capGeo, capMat);
+            cap.position.y = 0.25;
+            group.add(body, liquid, cap);
+            group.rotation.x = Math.PI / 2;
+            return group;
+          },
+          onUse: () => {
+            sanity = Math.min(maxSanity, sanity + 40);
+            inventory[activeSlot] = null;
+            renderInventory();
+            updateEquippedItem();
+          },
+        },
+      };
+
+      // =================================================================================================
+      //
+      // --- 3. ENTITY CONFIGURATION & "HOW-TO" GUIDE ---
+      //
+      // =================================================================================================
+      const ENTITIES = {
+        smiler: {
+          id: "smiler",
+          createModel: () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = 256;
+            canvas.height = 128;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.shadowColor = "white";
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(64, 48, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(192, 48, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(40, 80);
+            ctx.quadraticCurveTo(128, 150, 216, 80);
+            ctx.stroke();
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({
+              map: texture,
+              transparent: true,
+              blending: THREE.AdditiveBlending,
+            });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(4, 2, 1);
+            return sprite;
+          },
+          update: (entity, player, scene, maze) => {
+            // FIX: Set Y-position relative to player's *current* head height
+            entity.model.position.y = player.position.y;
+
+            const distanceToPlayer = entity.model.position.distanceTo(
+              player.position
+            );
+            const directionToPlayer = new THREE.Vector3()
+              .subVectors(player.position, entity.model.position)
+              .normalize();
+
+            // --- NEW: Line of Sight (Raycast) ---
+            let hasLineOfSight = true;
+            // Only check if maze is valid (it's maze[0] for level 0.1)
+            if (maze && maze.length > 0) {
+              const steps = Math.floor(distanceToPlayer / (wallSize / 2)); // Check every half-wall
+              const stepVector = directionToPlayer
+                .clone()
+                .multiplyScalar(wallSize / 2);
+              let currentCheckPos = entity.model.position.clone();
+
+              for (let i = 1; i < steps; i++) {
+                currentCheckPos.add(stepVector);
+                const mapX = Math.floor(currentCheckPos.x / wallSize);
+                const mapZ = Math.floor(currentCheckPos.z / wallSize);
+
+                if (maze[mapZ] && maze[mapZ][mapX] === 1) {
+                  hasLineOfSight = false;
+                  break;
+                }
+              }
+            } else {
+              hasLineOfSight = false; // No maze, no LoS
+            }
+            // --- End Line of Sight ---
+
+            const playerForward = new THREE.Vector3();
+            player.getWorldDirection(playerForward);
+            const isLooking = directionToPlayer.dot(playerForward) < -0.5;
+
+            if (distanceToPlayer < 2) {
+              gameOver("The Smiler caught you.");
+              return;
+            }
+
+            let moveSpeed = 0; // Default: don't move
+            if (hasLineOfSight) {
+              if (!isLooking || isSprinting) {
+                moveSpeed = 0.2; // Charge
+              } else {
+                moveSpeed = 0.02; // Creep
+              }
+            }
+
+            if (moveSpeed === 0) return; // Don't move if no LoS
+
+            const moveVector = directionToPlayer
+              .clone()
+              .multiplyScalar(moveSpeed);
+            const currentPos = entity.model.position;
+            const mazeHeight = maze.length;
+            const mazeWidth = maze[0].length;
+
+            const nextX = currentPos.x + moveVector.x;
+            let gridX = Math.floor(nextX / wallSize); // FIX: Use wallSize
+            let gridZ = Math.floor(currentPos.z / wallSize); // FIX: Use wallSize
+
+            if (
+              gridZ >= 0 &&
+              gridZ < mazeHeight &&
+              gridX >= 0 &&
+              gridX < mazeWidth &&
+              maze[gridZ][gridX] !== 1
+            ) {
+              currentPos.x = nextX;
+            }
+
+            const nextZ = currentPos.z + moveVector.z;
+            gridX = Math.floor(currentPos.x / wallSize); // FIX: Use wallSize
+            gridZ = Math.floor(nextZ / wallSize); // FIX: Use wallSize
+
+            if (
+              gridZ >= 0 &&
+              gridZ < mazeHeight &&
+              gridX >= 0 &&
+              gridX < mazeWidth &&
+              maze[gridZ][gridX] !== 1
+            ) {
+              currentPos.z = nextZ;
+            }
+          },
+        },
+      };
+
+      // =================================================================================================
+      //
+      // --- 4. LEVEL CONFIGURATION & "HOW-TO" GUIDE ---
+      //
+      // =================================================================================================
+      const storyHeight = 10;
+      const LEVELS = [
+        {
+          // Level 0: The Lobby
+          is3D: false,
+          isChunked: false, // fixed-grid
+          mazeSize: { width: 101, height: 101 },
+          playerSpeed: 0.35,
+          addPointLights: true,
+          exitType: "redRoomTransition",
+          ceilingHeight: 8,
+          itemSpawns: [
+            { id: "flashlight", x: 5, z: 5 },
+            { id: "almondWater", x: 7, z: 3 },
+          ],
+
+          postProcessMaze: (mazeArray) => {
+            let maze = mazeArray[0];
+            const width = maze[0].length;
+            const height = maze.length;
+            for (let z = 0; z < height; z++) {
+              for (let x = 0; x < width; x++) {
+                maze[z][x] = 1;
+              }
+            }
+            const rooms = [];
+            const roomCategories = {
+              large: { count: 4, min: 18, max: 24 },
+              medium: { count: 10, min: 7, max: 12 },
+              small: { count: 70, min: 4, max: 6 },
+            };
+            for (const category in roomCategories) {
+              const { count, min, max } = roomCategories[category];
+              for (
+                let i = 0;
+                i < count * 5 &&
+                rooms.filter((r) => r.category === category).length < count;
+                i++
+              ) {
+                const roomWidth =
+                  Math.floor(Math.random() * (max - min + 1)) + min;
+                const roomHeight =
+                  Math.floor(Math.random() * (max - min + 1)) + min;
+                const x =
+                  Math.floor(Math.random() * (width - roomWidth - 2)) + 1;
+                const z =
+                  Math.floor(Math.random() * (height - roomHeight - 2)) + 1;
+                const newRoom = {
+                  x,
+                  z,
+                  width: roomWidth,
+                  height: roomHeight,
+                  category,
+                  isPitfallRoom: false, // FIX: Initialize property
+                };
+                let overlaps = false;
+                for (const room of rooms) {
+                  if (
+                    x < room.x + room.width + 2 &&
+                    x + newRoom.width + 2 > room.x &&
+                    z < room.z + room.height + 2 &&
+                    z + newRoom.height + 2 > room.z
+                  ) {
+                    overlaps = true;
+                    break;
+                  }
+                }
+                if (!overlaps) rooms.push(newRoom);
+              }
+            }
+            maze.userData = { rooms };
+            for (const room of rooms) {
+              for (let z_ = room.z; z_ < room.z + room.height; z_++) {
+                for (let x_ = room.x; x_ < room.x + room.width; x_++) {
+                  if (x_ > 0 && x_ < width - 1 && z_ > 0 && z_ < height - 1) {
+                    maze[z_][x_] = 0;
+                  }
+                }
+              }
+            }
+            const largeRooms = rooms.filter((r) => r.category === "large");
+            for (const pitfallRoom of largeRooms) {
+              if (Math.random() < 0.3) {
+                pitfallRoom.isPitfallRoom = true; // FIX: Set flag
+                for (
+                  let z_ = pitfallRoom.z + 1;
+                  z_ < pitfallRoom.z + pitfallRoom.height - 1;
+                  z_++
+                ) {
+                  for (
+                    let x_ = pitfallRoom.x + 1;
+                    x_ < pitfallRoom.x + pitfallRoom.width - 1;
+                    x_++
+                  ) {
+                    if (
+                      (x_ - pitfallRoom.x) % 3 !== 1 &&
+                      (z_ - pitfallRoom.z) % 3 !== 1
+                    ) {
+                      maze[z_][x_] = 5; // pitfall tile
+                    }
+                  }
+                }
+              }
+            }
+            const carveHallway = (start, end) => {
+              let cx = start.x,
+                cz = start.z;
+              while (cx !== end.x) {
+                if (maze[cz][cx] !== 5) maze[cz][cx] = 0;
+                cx += Math.sign(end.x - cx);
+              }
+              while (cz !== end.z) {
+                if (maze[cz][cx] !== 5) maze[cz][cx] = 0;
+                cz += Math.sign(end.z - cz);
+              }
+            };
+            if (rooms.length > 1) {
+              const connected = [rooms[0]];
+              const unconnected = rooms.slice(1);
+              while (unconnected.length > 0) {
+                let bestDist = Infinity,
+                  bestC = null,
+                  bestU = null,
+                  bestIdx = -1;
+                for (const c of connected) {
+                  for (let i = 0; i < unconnected.length; i++) {
+                    const u = unconnected[i];
+                    const dist = (c.x - u.x) ** 2 + (c.z - u.z) ** 2;
+                    if (dist < bestDist) {
+                      bestDist = dist;
+                      bestC = c;
+                      bestU = u;
+                      bestIdx = i;
+                    }
+                  }
+                }
+                carveHallway(
+                  {
+                    x: Math.floor(bestC.x + bestC.width / 2),
+                    z: Math.floor(bestC.z + bestC.height / 2),
+                  },
+                  {
+                    x: Math.floor(bestU.x + bestU.width / 2),
+                    z: Math.floor(bestU.z + bestU.height / 2),
+                  }
+                );
+                connected.push(unconnected.splice(bestIdx, 1)[0]);
+              }
+            }
+            // FIX: Ensure exit is in a safe room
+            const validRooms = rooms.filter((r) => !r.isPitfallRoom);
+            if (validRooms.length > 0) {
+              const exitRoom = validRooms[validRooms.length - 1];
+              // Place exit tile (10) in a corner of the room
+              maze[exitRoom.z + 1][exitRoom.x + 1] = 10;
+            } else if (rooms.length > 0) {
+              // Failsafe: all rooms are pitfalls? Put exit in first room anyway.
+              maze[rooms[0].z + 1][rooms[0].x + 1] = 10;
+            }
+
+            return [maze];
+          },
+          visuals: {
+            background: 0x000000,
+            fog: null,
+            ambientLight: { color: 0xfff5b6, intensity: 0.4 },
+            wallTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 512;
+              c.height = 512;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#F5DE85";
+              ctx.fillRect(0, 0, 512, 512);
+              ctx.fillStyle = "rgba(200,180,100,0.05)";
+              for (let i = 0; i < 20000; i++) {
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, 1, 1);
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(0.5, 0.5);
+              return t;
+            },
+            floorTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 256;
+              c.height = 256;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#B0A47E";
+              ctx.fillRect(0, 0, 256, 256);
+              ctx.fillStyle = "rgba(0,0,0,0.15)";
+              for (let i = 0; i < 5000; i++) {
+                ctx.fillRect(Math.random() * 256, Math.random() * 256, 1, 1);
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(8, 8);
+              return t;
+            },
+            ceilingTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 256;
+              c.height = 256;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#FFFFFF";
+              ctx.fillRect(0, 0, 256, 256);
+              ctx.strokeStyle = "#C0C0C0";
+              ctx.lineWidth = 2;
+              for (let i = 0; i <= 256; i += 64) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 256);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(256, i);
+                ctx.stroke();
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(4, 4);
+              return t;
+            },
+          },
+        },
+        {
+          // Level 0.1: The Red Rooms
+          is3D: false,
+          mazeSize: { width: 81, height: 81 },
+          playerSpeed: 0.35,
+          addPointLights: false,
+          exitType: "noclip",
+          entities: ["smiler"], // FIX: Added Smiler entity
+          itemSpawns: [{ id: "almondWater", x: 5, z: 5 }],
+          postProcessMaze: (mazeArray) => {
+            let maze = mazeArray[0];
+            const width = maze[0].length;
+            const height = maze.length;
+            for (let z = 0; z < height; z++) {
+              for (let x = 0; x < width; x++) {
+                maze[z][x] = 1;
+              }
+            }
+            const rooms = [];
+            const roomCategories = {
+              large: { count: 3, min: 15, max: 20 },
+              medium: { count: 8, min: 7, max: 12 },
+              small: { count: 50, min: 4, max: 6 },
+            };
+            for (const category in roomCategories) {
+              const { count, min, max } = roomCategories[category];
+              for (
+                let i = 0;
+                i < count * 5 &&
+                rooms.filter((r) => r.category === category).length < count;
+                i++
+              ) {
+                const roomWidth =
+                  Math.floor(Math.random() * (max - min + 1)) + min;
+                const roomHeight =
+                  Math.floor(Math.random() * (max - min + 1)) + min;
+                const x =
+                  Math.floor(Math.random() * (width - roomWidth - 2)) + 1;
+                const z =
+                  Math.floor(Math.random() * (height - roomHeight - 2)) + 1;
+                const newRoom = {
+                  x,
+                  z,
+                  width: roomWidth,
+                  height: roomHeight,
+                  category: category,
+                };
+                let overlaps = false;
+                for (const room of rooms) {
+                  if (
+                    x < room.x + room.width + 2 &&
+                    x + newRoom.width + 2 > room.x &&
+                    z < room.z + room.height + 2 &&
+                    z + newRoom.height + 2 > room.z
+                  ) {
+                    overlaps = true;
+                    break;
+                  }
+                }
+                if (!overlaps) {
+                  rooms.push(newRoom);
+                }
+              }
+            }
+            for (const room of rooms) {
+              for (let z_ = room.z; z_ < room.z + room.height; z_++) {
+                for (let x_ = room.x; x_ < room.x + room.width; x_++) {
+                  if (x_ > 0 && x_ < width - 1 && z_ > 0 && z_ < height - 1) {
+                    maze[z_][x_] = 0;
+                  }
+                }
+              }
+            }
+            const carveHallway = (start, end) => {
+              let cx = start.x;
+              let cz = start.z;
+              if (Math.random() > 0.5) {
+                while (cx !== end.x) {
+                  maze[cz][cx] = 0;
+                  cx += Math.sign(end.x - cx);
+                }
+                while (cz !== end.z) {
+                  maze[cz][cx] = 0;
+                  cz += Math.sign(end.z - cz);
+                }
+              } else {
+                while (cz !== end.z) {
+                  maze[cz][cx] = 0;
+                  cz += Math.sign(end.z - cz);
+                }
+                while (cx !== end.x) {
+                  maze[cz][cx] = 0;
+                  cx += Math.sign(end.x - cx);
+                }
+              }
+            };
+            if (rooms.length > 1) {
+              const connectedRooms = [];
+              const unconnectedRooms = [...rooms];
+              connectedRooms.push(unconnectedRooms.splice(0, 1)[0]);
+              while (unconnectedRooms.length > 0) {
+                let bestDist = Infinity;
+                let bestConnectedRoom = null;
+                let bestUnconnectedRoom = null;
+                let bestUnconnectedIndex = -1;
+                for (const cRoom of connectedRooms) {
+                  for (let i = 0; i < unconnectedRooms.length; i++) {
+                    const uRoom = unconnectedRooms[i];
+                    const cCenter = {
+                      x: cRoom.x + cRoom.width / 2,
+                      z: cRoom.z + cRoom.height / 2,
+                    };
+                    const uCenter = {
+                      x: uRoom.x + uRoom.width / 2,
+                      z: uRoom.z + uRoom.height / 2,
+                    };
+                    const dist =
+                      Math.pow(cCenter.x - uCenter.x, 2) +
+                      Math.pow(cCenter.z - uCenter.z, 2);
+                    if (dist < bestDist) {
+                      bestDist = dist;
+                      bestConnectedRoom = cRoom;
+                      bestUnconnectedRoom = uRoom;
+                      bestUnconnectedIndex = i;
+                    }
+                  }
+                }
+                const start = {
+                  x: Math.floor(
+                    bestConnectedRoom.x + bestConnectedRoom.width / 2
+                  ),
+                  z: Math.floor(
+                    bestConnectedRoom.z + bestConnectedRoom.height / 2
+                  ),
+                };
+                const end = {
+                  x: Math.floor(
+                    bestUnconnectedRoom.x + bestUnconnectedRoom.width / 2
+                  ),
+                  z: Math.floor(
+                    bestUnconnectedRoom.z + bestUnconnectedRoom.height / 2
+                  ),
+                };
+                carveHallway(start, end);
+                connectedRooms.push(
+                  unconnectedRooms.splice(bestUnconnectedIndex, 1)[0]
+                );
+              }
+              const extraConnections = Math.floor(rooms.length * 0.2);
+              for (let i = 0; i < extraConnections; i++) {
+                const roomA = rooms[Math.floor(Math.random() * rooms.length)];
+                const roomB = rooms[Math.floor(Math.random() * rooms.length)];
+                if (roomA !== roomB) {
+                  const start = {
+                    x: Math.floor(roomA.x + roomA.width / 2),
+                    z: Math.floor(roomA.z + roomA.height / 2),
+                  };
+                  const end = {
+                    x: Math.floor(roomB.x + roomB.width / 2),
+                    z: Math.floor(roomB.z + roomB.height / 2),
+                  };
+                  carveHallway(start, end);
+                }
+              }
+            }
+            if (rooms.length > 0) {
+              const lastRoom = rooms[rooms.length - 1];
+              for (
+                let z_ = lastRoom.z;
+                z_ < lastRoom.z + lastRoom.height;
+                z_++
+              ) {
+                for (
+                  let x_ = lastRoom.x;
+                  x_ < lastRoom.x + lastRoom.width;
+                  x_++
+                ) {
+                  if (maze[z_] && maze[z_][x_] === 0) {
+                    maze[z_][x_] = 9;
+                  }
+                }
+              }
+            }
+            maze.userData = { rooms };
+            return [maze];
+          },
+          visuals: {
+            background: 0x330000,
+            fog: new THREE.Fog(0x550000, 5, 25),
+            ambientLight: { color: 0xff0000, intensity: 0.3 },
+            wallTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 256;
+              c.height = 256;
+              const x = c.getContext("2d");
+              x.fillStyle = "#8B0000";
+              x.fillRect(0, 0, 256, 256);
+              x.fillStyle = "rgba(0,0,0,0.2)";
+              for (let i = 0; i < 5000; i++) {
+                x.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+              }
+              x.fillStyle = "rgba(0,0,0,0.15)";
+              for (let i = 0; i < 20; i++) {
+                x.beginPath();
+                x.arc(
+                  Math.random() * 256,
+                  Math.random() * 256,
+                  Math.random() * 20 + 10,
+                  0,
+                  Math.PI * 2
+                );
+                x.fill();
+              }
+              const t = new THREE.CanvasTexture(c);
+              return t;
+            },
+            floorTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 128;
+              c.height = 128;
+              const x = c.getContext("2d");
+              x.fillStyle = "#A52A2A";
+              x.fillRect(0, 0, 128, 128);
+              x.fillStyle = "rgba(0,0,0,0.3)";
+              for (let i = 0; i < 4000; i++) {
+                x.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+              }
+              x.fillStyle = "rgba(0,0,0,0.2)";
+              for (let i = 0; i < 15; i++) {
+                x.beginPath();
+                x.arc(
+                  Math.random() * 128,
+                  Math.random() * 128,
+                  Math.random() * 8 + 4,
+                  0,
+                  Math.PI * 2
+                );
+                x.fill();
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(20, 20);
+              return t;
+            },
+            ceilingTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 256;
+              c.height = 256;
+              const x = c.getContext("2d");
+              x.fillStyle = "#220000";
+              x.fillRect(0, 0, 256, 256);
+              x.strokeStyle = "#110000";
+              x.lineWidth = 3;
+              for (let i = 0; i <= 256; i += 64) {
+                x.beginPath();
+                x.moveTo(i, 0);
+                x.lineTo(i, 256);
+                x.stroke();
+                x.beginPath();
+                x.moveTo(0, i);
+                x.lineTo(256, i);
+                x.stroke();
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(8, 8);
+              return t;
+            },
+          },
+        },
+        {
+          // Level 1: Parking Garage
+          is3D: true,
+          isChunked: true,
+          mazeSize: { width: 61, height: 61 },
+          numFloors: 3,
+          generator: {
+            parkingAreas: 4,
+            hallwayAreas: 6,
+            parkingSize: { min: 15, max: 25 },
+            hallwaySize: { min: 10, max: 18 },
+          },
+          playerSpeed: 0.35,
+          exitType: "stairs",
+          addPointLights: true,
+          hallwayCeilingHeight: 7,
+          parkingCeilingHeight: 15,
+          entities: ["smiler"],
+          lighting: { blackoutChance: 0.01 },
+          itemSpawns: [{ id: "flashlight", x: 2, z: 2, y: 0 }],
+
+          getTile: function (x, y, z) {
+            // FIX: Use global `maze` variable
+            if (
+              !maze[y] ||
+              z < 0 ||
+              z >= maze[y].length ||
+              x < 0 ||
+              x >= maze[y][0].length
+            ) {
+              return 1; // Out of bounds is a wall
+            }
+            return maze[y][z][x];
+          },
+          getCeilingHeight: function (x, y, z) {
+            // FIX: Use global `maze` variable
+            const floorData = maze[y];
+            if (
+              !floorData ||
+              !floorData.userData ||
+              !floorData.userData.zoneMap
+            ) {
+              return this.hallwayCeilingHeight;
+            }
+            const zoneMap = floorData.userData.zoneMap;
+            if (!zoneMap[z] || !zoneMap[z][x]) {
+              return this.hallwayCeilingHeight;
+            }
+            const zone = zoneMap[z][x];
+            return zone === "parking"
+              ? this.parkingCeilingHeight
+              : this.hallwayCeilingHeight;
+          },
+          postProcessMaze: (mazeArray) => {
+            const floors = mazeArray;
+            const { parkingAreas, hallwayAreas, parkingSize, hallwaySize } =
+              LEVELS[2].generator; // FIX: Use correct index
+
+            for (let f = 0; f < floors.length; f++) {
+              const maze = floors[f];
+              const width = maze[0].length;
+              const height = maze[0].length;
+              const zoneMap = Array(height)
+                .fill(null)
+                .map(() => Array(width).fill("default"));
+
+              for (let z = 0; z < height; z++) {
+                for (let x = 0; x < width; x++) {
+                  maze[z][x] = 1;
+                }
+              }
+
+              const parkingZones = [];
+              const hallwayZones = [];
+
+              for (let i = 0; i < parkingAreas; i++) {
+                const w =
+                  Math.floor(
+                    Math.random() * (parkingSize.max - parkingSize.min + 1)
+                  ) + parkingSize.min;
+                const h =
+                  Math.floor(
+                    Math.random() * (parkingSize.max - parkingSize.min + 1)
+                  ) + parkingSize.min;
+                const x = Math.floor(Math.random() * (width - w - 2)) + 1;
+                const z = Math.floor(Math.random() * (height - h - 2)) + 1;
+                for (let zz = z; zz < z + h; zz++) {
+                  for (let xx = x; xx < x + w; xx++) {
+                    maze[zz][xx] = 0;
+                    zoneMap[zz][xx] = "parking";
+                  }
+                }
+                parkingZones.push({ x, z, w, h });
+              }
+
+              for (let i = 0; i < hallwayAreas; i++) {
+                const w =
+                  Math.floor(
+                    Math.random() * (hallwaySize.max - hallwaySize.min + 1)
+                  ) + hallwaySize.min;
+                const h =
+                  Math.floor(
+                    Math.random() * (hallwaySize.max - hallwaySize.min + 1)
+                  ) + hallwaySize.min;
+                const x = Math.floor(Math.random() * (width - w - 2)) + 1;
+                const z = Math.floor(Math.random() * (height - h - 2)) + 1;
+                for (let zz = z; zz < z + h; zz++) {
+                  for (let xx = x; xx < x + w; xx++) {
+                    maze[zz][xx] = 1;
+                  }
+                }
+                function carveHall(x0, z0) {
+                  const dirs = [
+                    [1, 0],
+                    [-1, 0],
+                    [0, 1],
+                    [0, -1],
+                  ];
+                  dirs.sort(() => Math.random() - 0.5);
+                  for (const [dx, dz] of dirs) {
+                    const nx = x0 + dx * 2;
+                    const nz = z0 + dz * 2;
+                    if (
+                      nx > x &&
+                      nx < x + w - 1 &&
+                      nz > z &&
+                      nz < z + h - 1 &&
+                      maze[nz][nx] === 1
+                    ) {
+                      maze[z0 + dz][x0 + dx] = 0;
+                      zoneMap[z0 + dz][x0 + dx] = "hallway";
+                      maze[nz][nx] = 0;
+                      zoneMap[nz][nx] = "hallway";
+                      carveHall(nx, nz);
+                    }
+                  }
+                }
+                const startX =
+                  x +
+                  1 +
+                  2 * Math.floor(Math.random() * Math.max(0, (w - 3) / 2));
+                const startZ =
+                  z +
+                  1 +
+                  2 * Math.floor(Math.random() * Math.max(0, (h - 3) / 2));
+                maze[startZ][startX] = 0;
+                zoneMap[startZ][startX] = "hallway";
+                carveHall(startX, startZ);
+                hallwayZones.push({ x, z, w, h });
+              }
+
+              const allRooms = parkingZones.concat(hallwayZones).map((z) => ({
+                x: z.x,
+                z: z.z,
+                width: z.w,
+                height: z.h,
+                centerX: Math.floor(z.x + z.w / 2),
+                centerZ: Math.floor(z.z + z.h / 2),
+              }));
+
+              const carveHallway = (start, end) => {
+                let cx = start.x;
+                let cz = start.z;
+                if (Math.random() > 0.5) {
+                  while (cx !== end.x) {
+                    if (maze[cz] && maze[cz][cx] !== undefined)
+                      maze[cz][cx] = 0;
+                    cx += Math.sign(end.x - cx);
+                  }
+                  while (cz !== end.z) {
+                    if (maze[cz] && maze[cz][cx] !== undefined)
+                      maze[cz][cx] = 0;
+                    cz += Math.sign(end.z - cz);
+                  }
+                } else {
+                  while (cz !== end.z) {
+                    if (maze[cz] && maze[cz][cx] !== undefined)
+                      maze[cz][cx] = 0;
+                    cz += Math.sign(end.z - cz);
+                  }
+                  while (cx !== end.x) {
+                    if (maze[cz] && maze[cz][cx] !== undefined)
+                      maze[cz][cx] = 0;
+                    cx += Math.sign(end.x - cx);
+                  }
+                }
+              };
+              if (allRooms.length > 1) {
+                const connected = [allRooms[0]];
+                const unconnected = allRooms.slice(1);
+                while (unconnected.length > 0) {
+                  let bestDist = Infinity,
+                    bestC = null,
+                    bestU = null,
+                    bestIdx = -1;
+                  for (const c of connected) {
+                    for (let i = 0; i < unconnected.length; i++) {
+                      const u = unconnected[i];
+                      const dist =
+                        (c.centerX - u.centerX) ** 2 +
+                        (c.centerZ - u.centerZ) ** 2;
+                      if (dist < bestDist) {
+                        bestDist = dist;
+                        bestC = c;
+                        bestU = u;
+                        bestIdx = i;
+                      }
+                    }
+                  }
+                  if (bestC && bestU) {
+                    carveHallway(
+                      { x: bestC.centerX, z: bestC.centerZ },
+                      { x: bestU.centerX, z: bestU.centerZ }
+                    );
+                    connected.push(unconnected.splice(bestIdx, 1)[0]);
+                  } else {
+                    break;
+                  }
+                }
+              }
+
+              if (f < floors.length - 1) {
+                if (allRooms.length > 0) {
+                  const stairRoom = allRooms[0];
+                  const stairX = stairRoom.centerX;
+                  const stairZ = stairRoom.centerZ;
+                  maze[stairZ][stairX] = 3;
+                  floors[f + 1][stairZ][stairX] = 4;
+                } else {
+                  const stairX = Math.floor(width / 2);
+                  const stairZ = Math.floor(height / 2);
+                  maze[stairZ][stairX] = 3;
+                  floors[f + 1][stairZ][stairX] = 4;
+                }
+              }
+
+              if (f === floors.length - 1) {
+                if (allRooms.length > 0) {
+                  const exitRoom = allRooms[allRooms.length - 1];
+                  maze[exitRoom.centerZ][exitRoom.centerX] = 9;
+                } else {
+                  maze[height - 3][width - 3] = 9;
+                }
+              }
+              maze.userData = {
+                rooms: allRooms,
+                parkingZones,
+                hallwayZones,
+                zoneMap: zoneMap,
+              };
+            }
+            return floors;
+          },
+          visuals: {
+            background: 0x000000,
+            fog: new THREE.Fog(0x111111, 5, 50),
+            ambientLight: { color: 0x888888, intensity: 0.6 },
+            wallTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 256;
+              c.height = 256;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#575757";
+              ctx.fillRect(0, 0, 256, 256);
+              ctx.fillStyle = "rgba(255,255,255,0.03)";
+              for (let i = 0; i < 3000; i++) {
+                ctx.fillRect(Math.random() * 256, Math.random() * 256, 1, 1);
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(2, 2);
+              return t;
+            },
+            floorTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 256;
+              c.height = 256;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#222222";
+              ctx.fillRect(0, 0, 256, 256);
+              ctx.fillStyle = "rgba(255,255,255,0.05)";
+              for (let i = 0; i < 4000; i++) {
+                ctx.fillRect(Math.random() * 256, Math.random() * 256, 1, 1);
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(4, 4);
+              return t;
+            },
+            ceilingTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 256;
+              c.height = 256;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#3f3f3f";
+              ctx.fillRect(0, 0, 256, 256);
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(2, 2);
+              return t;
+            },
+          },
+        },
+        {
+          // Level 2: Pipe Dreams
+          is3D: false,
+          mazeSize: { width: 61, height: 61 },
+          playerSpeed: 0.35,
+          addPointLights: true,
+          exitType: "redbox",
+          itemSpawns: [{ id: "flashlight", x: 1, z: 3 }],
+          lighting: { flicker: true, blackoutChance: 0.00005 },
+          postProcessMaze: (mazeArray) => {
+            let maze = mazeArray[0];
+            const width = maze[0].length;
+            const height = maze[0].length;
+            // Fill with walls
+            for (let z = 0; z < height; z++) {
+              for (let x = 0; x < width; x++) {
+                maze[z][x] = 1;
+              }
+            }
+            function carve(x, y) {
+              const directions = [
+                [0, -2],
+                [0, 2],
+                [-2, 0],
+                [2, 0],
+              ];
+              directions.sort(() => Math.random() - 0.5);
+              maze[y][x] = 0;
+              for (let dir of directions) {
+                const nextX = x + dir[0];
+                const nextY = y + dir[1];
+                if (
+                  nextX > 0 &&
+                  nextX < width - 1 &&
+                  nextY > 0 &&
+                  nextY < height - 1 &&
+                  maze[nextY][nextX] === 1
+                ) {
+                  maze[y + dir[1] / 2][x + dir[0] / 2] = 0;
+                  carve(nextX, nextY);
+                }
+              }
+            }
+            carve(1, 1);
+            // FIX: Add userData for spawn point
+            maze.userData = { rooms: [{ x: 1, z: 1, width: 1, height: 1 }] };
+            // Add exit
+            maze[height - 2][width - 2] = 9;
+            return [maze];
+          },
+          visuals: {
+            background: 0x000000,
+            fog: new THREE.Fog(0x000000, 5, 30),
+            ambientLight: { color: 0x303030, intensity: 0.5 },
+            wallTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 128;
+              c.height = 128;
+              const x = c.getContext("2d");
+              x.fillStyle = "#444444";
+              x.fillRect(0, 0, 128, 128);
+              x.strokeStyle = "#555555";
+              x.lineWidth = 8;
+              for (let i = 0; i < 5; i++) {
+                let y = 15 + Math.random() * 100;
+                x.beginPath();
+                x.moveTo(0, y);
+                x.lineTo(128, y);
+                x.stroke();
+              }
+              return new THREE.CanvasTexture(c);
+            },
+            floorTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 128;
+              c.height = 128;
+              const x = c.getContext("2d");
+              x.fillStyle = "#3a3a3a";
+              x.fillRect(0, 0, 128, 128);
+              for (let i = 0; i < 5; i++) {
+                x.fillStyle = "rgba(80,80,80,0.4)";
+                x.beginPath();
+                x.ellipse(
+                  Math.random() * 128,
+                  Math.random() * 128,
+                  10,
+                  20,
+                  Math.random() * Math.PI,
+                  0,
+                  2 * Math.PI
+                );
+                x.fill();
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(20, 20);
+              return t;
+            },
+            ceilingTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 128;
+              c.height = 128;
+              const x = c.getContext("2d");
+              x.fillStyle = "#111111";
+              x.fillRect(0, 0, 128, 128);
+              x.strokeStyle = "#222222";
+              x.lineWidth = 12;
+              for (let i = 0; i < 8; i++) {
+                let y = Math.random() * 128;
+                x.beginPath();
+                x.moveTo(0, y);
+                x.lineTo(128, y);
+                x.stroke();
+              }
+              return new THREE.CanvasTexture(c);
+            },
+          },
+        },
+        {
+          // Level 4: The Pool Rooms
+          is3D: false,
+          isChunked: false,
+          mazeSize: { width: 81, height: 81 },
+          playerSpeed: 0.3,
+          addPointLights: false, // NEW: Use emissive ceiling
+          exitType: "noclip",
+          ceilingHeight: 12,
+          itemSpawns: [
+            { id: "flashlight", x: 1, z: 3 },
+            { id: "almondWater", x: 3, z: 1 },
+          ],
+          lighting: {}, // NEW: No flicker, rely on ambient/emissive
+          postProcessMaze: (mazeArray) => {
+            let maze = mazeArray[0];
+            const width = maze[0].length;
+            const height = maze[0].length;
+            const rooms = [];
+            // 0 = path, 1 = wall, 6 = water, 7 = window
+            for (let z = 0; z < height; z++) {
+              for (let x = 0; x < width; x++) {
+                maze[z][x] = 1;
+              }
+            }
+
+            // Create large rooms
+            for (let i = 0; i < 15; i++) {
+              const w = Math.floor(Math.random() * 10) + 10;
+              const h = Math.floor(Math.random() * 10) + 10;
+              const x = Math.floor(Math.random() * (width - w - 2)) + 1;
+              const z = Math.floor(Math.random() * (height - h - 2)) + 1;
+              const newRoom = { x, z, width: w, height: h };
+              rooms.push(newRoom);
+              for (let z_ = z; z_ < z + h; z_++) {
+                for (let x_ = x; x_ < x + w; x_++) {
+                  // 90% chance of water, 10% chance of path
+                  maze[z_][x_] = Math.random() < 0.9 ? 6 : 0;
+                }
+              }
+              // Create 1-tile wide path around room
+              for (let z_ = z - 1; z_ < z + h + 1; z_++) {
+                maze[z_][x - 1] = 0;
+                maze[z_][x + w] = 0;
+              }
+              for (let x_ = x - 1; x_ < x + w + 1; x_++) {
+                maze[z - 1][x_] = 0;
+                maze[z + h][x_] = 0;
+              }
+            }
+
+            // Connect rooms with 3-wide hallways
+            const carveHallway = (start, end) => {
+              let cx = start.x,
+                cz = start.z;
+              const carve = (x, z) => {
+                for (let i = -1; i <= 1; i++) {
+                  for (let j = -1; j <= 1; j++) {
+                    if (maze[z + j] && maze[z + j][x + i] === 1) {
+                      maze[z + j][x + i] = 0;
+                    }
+                  }
+                }
+              };
+              while (cx !== end.x) {
+                carve(cx, cz);
+                cx += Math.sign(end.x - cx);
+              }
+              while (cz !== end.z) {
+                carve(cx, cz);
+                cz += Math.sign(end.z - cz);
+              }
+            };
+            for (let i = 0; i < rooms.length - 1; i++) {
+              const r1 = rooms[i];
+              const r2 = rooms[i + 1];
+              const start = {
+                x: Math.floor(r1.x + r1.width / 2),
+                z: Math.floor(r1.z + r1.height / 2),
+              };
+              const end = {
+                x: Math.floor(r2.x + r2.width / 2),
+                z: Math.floor(r2.z + r2.height / 2),
+              };
+              carveHallway(start, end);
+            }
+
+            maze.userData = { rooms: rooms };
+            maze[height - 3][width - 3] = 9; // Exit
+
+            // NEW: Add windows
+            for (let z = 1; z < height - 1; z++) {
+              for (let x = 1; x < width - 1; x++) {
+                if (maze[z][x] === 1) {
+                  // If it's a wall
+                  // Check neighbors
+                  if (
+                    maze[z - 1][x] === 0 ||
+                    maze[z - 1][x] === 6 ||
+                    maze[z + 1][x] === 0 ||
+                    maze[z + 1][x] === 6 ||
+                    maze[z][x - 1] === 0 ||
+                    maze[z][x - 1] === 6 ||
+                    maze[z][x + 1] === 0 ||
+                    maze[z][x + 1] === 6
+                  ) {
+                    if (Math.random() < 0.1) {
+                      // 10% chance
+                      maze[z][x] = 7; // It's a window!
+                    }
+                  }
+                }
+              }
+            }
+
+            return [maze];
+          },
+          visuals: {
+            background: 0x224466, // NEW: Deep blue
+            fog: new THREE.Fog(0x224466, 10, 50), // NEW: Match background
+            ambientLight: { color: 0xbbeeff, intensity: 0.6 }, // NEW
+            wallTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 128;
+              c.height = 128;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#FFFFFF";
+              ctx.fillRect(0, 0, 128, 128);
+              ctx.strokeStyle = "#B0B0B0";
+              ctx.lineWidth = 1;
+              for (let i = 0; i <= 128; i += 32) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 128);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(128, i);
+                ctx.stroke();
+              }
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(1, 1);
+              return t;
+            },
+            floorTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 128;
+              c.height = 128;
+              const ctx = c.getContext("2d");
+
+              let time = 0;
+
+              function draw() {
+                ctx.clearRect(0, 0, 128, 128);
+                ctx.fillStyle = "#EEEEFF";
+                ctx.fillRect(0, 0, 128, 128);
+
+                ctx.strokeStyle = "#C0C0D0";
+                ctx.lineWidth = 1;
+
+                for (let i = 0; i <= 128; i += 32) {
+                  const offset = Math.sin(time + i * 0.1) * 2;
+
+                  ctx.beginPath();
+                  ctx.moveTo(i + offset, 0);
+                  ctx.lineTo(i + offset, 128);
+                  ctx.stroke();
+
+                  ctx.beginPath();
+                  ctx.moveTo(0, i + offset);
+                  ctx.lineTo(128, i + offset);
+                  ctx.stroke();
+                }
+
+                time += 0.05;
+                requestAnimationFrame(draw);
+              }
+
+              draw();
+
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(4, 4);
+              t.needsUpdate = true;
+
+              return t;
+            },
+
+            // NEW: Skylight texture
+            ceilingTexture: () => {
+              const c = document.createElement("canvas");
+              c.width = 128;
+              c.height = 128;
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#FFFFFF"; // Bright white
+              ctx.fillRect(0, 0, 128, 128);
+              ctx.fillStyle = "#D0D0D0"; // Gray frame
+              ctx.fillRect(0, 0, 128, 8);
+              ctx.fillRect(0, 120, 128, 8);
+              ctx.fillRect(0, 0, 8, 128);
+              ctx.fillRect(120, 0, 8, 128);
+              ctx.fillStyle = "#E0E0E0"; // Inner lines
+              ctx.fillRect(60, 8, 8, 112);
+              ctx.fillRect(8, 60, 112, 8);
+              const t = new THREE.CanvasTexture(c);
+              t.wrapS = t.wrapT = THREE.RepeatWrapping;
+              t.repeat.set(2, 2); // Bigger panels
+              return t;
+            },
+          },
+        },
+      ];
+
+      // =================================================================================================
+      // --- 5. CHUNK MANAGEMENT SYSTEM (Procedural Version) ---
+      // =================================================================================================
+      const CHUNK_SIZE = { width: 16, height: 16 };
+      const RENDER_DISTANCE = 1;
+      const activeChunks = {};
+      let lastPlayerChunkId = null;
+
+      function getPlayerChunkCoords() {
+        const playerPos = camera.position;
+        const cx = Math.floor(playerPos.x / (CHUNK_SIZE.width * wallSize));
+        const cz = Math.floor(playerPos.z / (CHUNK_SIZE.height * wallSize));
+        const cy = Math.floor(playerPos.y / storyHeight);
+        return { cx, cy, cz };
+      }
+
+      function getChunkId(cx, cy, cz) {
+        return `${cx}_${cy}_${cz}`;
+      }
+
+      function unloadChunk(chunkId) {
+        const chunk = activeChunks[chunkId];
+        if (!chunk) return;
+        chunk.objects.forEach((obj) => {
+          scene.remove(obj);
+          if (obj.geometry) obj.geometry.dispose();
+          // Note: Materials are not disposed to allow reuse
+        });
+        delete activeChunks[chunkId];
+      }
+
+      function loadChunk(cx, cy, cz) {
+        const chunkId = getChunkId(cx, cy, cz);
+        if (activeChunks[chunkId]) return;
+
+        const level = LEVELS[currentLevelIndex];
+        const chunk = { objects: [] };
+        const yOffset = cy * storyHeight;
+
+        // Materials (FIX: Use cache)
+        if (!materialCache.wall) {
+          materialCache.wall = new THREE.MeshStandardMaterial({
+            map: level.visuals.wallTexture(),
+            roughness: 0.9,
+            metalness: 0.1,
+          });
+        }
+        if (!materialCache.noClip) {
+          materialCache.noClip = new THREE.MeshStandardMaterial({
+            map: level.visuals.wallTexture(),
+            color: 0xffff00,
+          });
+        }
+        if (!materialCache.floor) {
+          materialCache.floor = new THREE.MeshStandardMaterial({
+            map: level.visuals.floorTexture(),
+            side: THREE.DoubleSide,
+          });
+        }
+        if (!materialCache.ceiling) {
+          materialCache.ceiling = new THREE.MeshStandardMaterial({
+            map: level.visuals.ceilingTexture(),
+            side: THREE.DoubleSide,
+          });
+        }
+        if (!materialCache.ramp) {
+          materialCache.ramp = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa,
+            map: level.visuals.floorTexture(),
+          });
+        }
+        if (!materialCache.rail) {
+          materialCache.rail = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            roughness: 0.9,
+            metalness: 0.1,
+          });
+        }
+
+        const wallMat = materialCache.wall;
+        const noClipMat = materialCache.noClip;
+        const floorMat = materialCache.floor;
+        const ceilingMat = materialCache.ceiling;
+        const rampMat = materialCache.ramp;
+
+        const startX = cx * CHUNK_SIZE.width;
+        const startZ = cz * CHUNK_SIZE.height;
+        const endX = startX + CHUNK_SIZE.width;
+        const endZ = startZ + CHUNK_SIZE.height;
+
+        // Floor
+        const floorGeo = new THREE.PlaneGeometry(
+          CHUNK_SIZE.width * wallSize,
+          CHUNK_SIZE.height * wallSize
+        );
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(
+          (startX + CHUNK_SIZE.width / 2) * wallSize,
+          yOffset,
+          (startZ + CHUNK_SIZE.height / 2) * wallSize
+        );
+        floor.receiveShadow = true;
+        scene.add(floor);
+        chunk.objects.push(floor);
+
+        for (let z = startZ; z < endZ; z++) {
+          for (let x = startX; x < endX; x++) {
+            const tile = level.getTile(x, cy, z);
+            const ceilingHeight = level.getCeilingHeight(x, cy, z);
+            const worldX = x * wallSize + wallSize / 2;
+            const worldZ = z * wallSize + wallSize / 2;
+
+            // FIX: Per-tile ceiling piece, skip for ramps
+            if (tile !== 1 && tile !== 3 && tile !== 4) {
+              const ceilGeo = new THREE.PlaneGeometry(wallSize, wallSize);
+              const ceil = new THREE.Mesh(ceilGeo, ceilingMat);
+              ceil.rotation.x = Math.PI / 2;
+              ceil.position.set(worldX, yOffset + ceilingHeight, worldZ);
+              scene.add(ceil);
+              chunk.objects.push(ceil);
+            }
+
+            if (tile === 1 || tile === 9) {
+              const wallGeo = new THREE.BoxGeometry(
+                wallSize,
+                ceilingHeight,
+                wallSize
+              );
+              const mat = tile === 9 ? noClipMat : wallMat;
+              const wall = new THREE.Mesh(wallGeo, mat);
+              wall.position.set(worldX, yOffset + ceilingHeight / 2, worldZ);
+              wall.castShadow = true;
+              wall.receiveShadow = true;
+              scene.add(wall);
+              chunk.objects.push(wall);
+            } else if (tile === 3 || tile === 4) {
+              // Ramp (UP or DOWN)
+              const rampGroup = new THREE.Group();
+              const yCenter = yOffset + ceilingHeight / 2;
+              const platformLength = Math.sqrt(
+                ceilingHeight ** 2 + wallSize ** 2
+              );
+              const angle = Math.atan(ceilingHeight / wallSize);
+
+              const platformGeo = new THREE.BoxGeometry(
+                wallSize,
+                0.2,
+                platformLength
+              );
+              const platform = new THREE.Mesh(platformGeo, rampMat);
+              platform.receiveShadow = true;
+
+              const railHeight = 2.5;
+              const railGeo = new THREE.BoxGeometry(
+                0.3,
+                railHeight,
+                platformLength
+              );
+              const railMat = materialCache.rail; // FIX: Use cached rail material
+              const rail1 = new THREE.Mesh(railGeo, railMat);
+              const rail2 = new THREE.Mesh(railGeo, railMat.clone());
+              rail1.castShadow = true;
+              rail2.castShadow = true;
+
+              rail1.position.x = -wallSize / 2 + 0.15;
+              rail2.position.x = wallSize / 2 - 0.15;
+              rail1.position.y = railHeight / 2 - 0.1;
+              rail2.position.y = railHeight / 2 - 0.1;
+
+              rampGroup.add(platform, rail1, rail2);
+              rampGroup.position.set(worldX, yCenter, worldZ);
+              // FIX: Ramp rotation logic
+              rampGroup.rotation.x = tile === 3 ? -angle : angle; // 3=UP, 4=DOWN
+
+              scene.add(rampGroup);
+              chunk.objects.push(rampGroup);
+            }
+
+            // Lights
+            if (
+              level.addPointLights &&
+              Math.random() < 0.02 &&
+              (tile === 0 || tile === 2)
+            ) {
+              const pointLight = new THREE.PointLight(0xffffdd, 1.2, 25);
+              pointLight.position.set(
+                worldX,
+                yOffset + ceilingHeight - 0.5,
+                worldZ
+              );
+              // FIX: Setting castShadow to false. Too many shadow-casting lights
+              // was causing the 'MAX_TEXTURE_IMAGE_UNITS' error and black screen.
+              pointLight.castShadow = false;
+              scene.add(pointLight);
+              chunk.objects.push(pointLight);
+            }
+          }
+        }
+
+        activeChunks[chunkId] = chunk;
+      }
+
+      function updateChunks() {
+        const { cx, cy, cz } = getPlayerChunkCoords();
+        const level = LEVELS[currentLevelIndex];
+        const currentChunkId = getChunkId(cx, cy, cz);
+        if (currentChunkId === lastPlayerChunkId) return;
+        lastPlayerChunkId = currentChunkId;
+
+        const chunksToKeep = {};
+        const verticalRenderDistance = level.is3D ? 1 : 0; // Only 1 floor up/down for 3D
+
+        for (
+          let y = -verticalRenderDistance;
+          y <= verticalRenderDistance;
+          y++
+        ) {
+          for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
+            for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
+              const chunkId = getChunkId(cx + x, cy + y, cz + z);
+              chunksToKeep[chunkId] = true;
+              if (!activeChunks[chunkId]) loadChunk(cx + x, cy + y, cz + z);
+            }
+          }
+        }
+
+        for (const chunkId in activeChunks) {
+          if (!chunksToKeep[chunkId]) unloadChunk(chunkId);
+        }
+      }
+
+      // --- 6. GAME STATE & SCENE SETUP ---
+      let maze = [],
+        activeEntities = [],
+        itemPickups = [];
+      let ambientLight, hemiLight;
+      let noClipExitPos = null;
+      let materialCache = {}; // FIX: Added material cache
+      const wallSize = 5;
+      const playerColliderRadius = 1.0;
+      const playerHeight = 2.5;
+      const crouchHeight = 1.5;
+
+      // Player stats
+      let stamina = 100,
+        maxStamina = 100,
+        isSprinting = false;
+      let sanity = 100,
+        maxSanity = 100;
+      const staminaDrainRate = 15;
+      const staminaRegenRate = 10;
+      const sprintSpeedMultiplier = 1.7;
+      const clock = new THREE.Clock();
+
+      function generateMaze(width, height, is3D, numFloors) {
+        if (!is3D) {
+          let maze2D = Array(height)
+            .fill(null)
+            .map(() => Array(width).fill(1));
+          return [maze2D];
+        } else {
+          let maze3D = [];
+          for (let i = 0; i < (numFloors || 1); i++) {
+            let floorMaze = Array(height)
+              .fill(null)
+              .map(() => Array(width).fill(1));
+            // Pre-carve for 3D levels to ensure post-processing has a base
+            function carve(x, y) {
+              const d = [
+                [0, -2],
+                [0, 2],
+                [-2, 0],
+                [2, 0],
+              ];
+              d.sort(() => Math.random() - 0.5);
+              floorMaze[y][x] = 0;
+              for (let dir of d) {
+                const n = { x: x + dir[0], y: y + dir[1] };
+                if (
+                  n.x > 0 &&
+                  n.x < width - 1 &&
+                  n.y > 0 &&
+                  n.y < height - 1 &&
+                  floorMaze[n.y][n.x] === 1
+                ) {
+                  floorMaze[n.y - dir[1] / 2][n.x - dir[0] / 2] = 0;
+                  carve(n.x, n.y);
+                }
+              }
+            }
+            carve(1, 1);
+            maze3D.push(floorMaze);
+          }
+          return maze3D;
+        }
+      }
+
+      function setupSceneForLevel(level) {
+        materialCache = {}; // FIX: Clear material cache
+        Object.keys(activeChunks).forEach(unloadChunk);
+        lastPlayerChunkId = null;
+
+        itemPickups.forEach((i) => scene.remove(i.mesh));
+        itemPickups = [];
+        activeEntities.forEach((e) => scene.remove(e.model));
+        activeEntities = [];
+        if (ambientLight) scene.remove(ambientLight);
+        if (hemiLight) scene.remove(hemiLight);
+        noClipExitPos = null;
+
+        scene.background = new THREE.Color(level.visuals.background);
+        scene.fog = level.visuals.fog;
+
+        ambientLight = new THREE.AmbientLight(
+          level.visuals.ambientLight.color,
+          level.visuals.ambientLight.intensity
+        );
+        scene.add(ambientLight);
+        hemiLight = new THREE.HemisphereLight(0xaaaaaa, 0x222222, 0.25);
+        scene.add(hemiLight);
+
+        if (level.itemSpawns) {
+          level.itemSpawns.forEach((spawn) => {
+            const item = ITEMS[spawn.id];
+            if (item) {
+              const geometry = new THREE.BoxGeometry(
+                wallSize * 0.3,
+                wallSize * 0.3,
+                wallSize * 0.3
+              );
+              const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+              const mesh = new THREE.Mesh(geometry, material);
+              const y = (spawn.y || 0) * storyHeight;
+              // Spawn item on the floor
+              mesh.position.set(
+                spawn.x * wallSize + wallSize / 2,
+                y + 0.5,
+                (spawn.z || 0) * wallSize + wallSize / 2
+              );
+              scene.add(mesh);
+              itemPickups.push({ mesh: mesh, id: spawn.id });
+            }
+          });
+        }
+      }
+
+      // --- 7. INVENTORY, PLAYER & CONTROLS ---
+      let inventory = new Array(9).fill(null);
+      let activeSlot = 0;
+      let isInventoryOpen = false;
+
+      function addItem(itemId) {
+        const firstEmptySlot = inventory.findIndex((slot) => slot === null);
+        if (firstEmptySlot !== -1) {
+          inventory[firstEmptySlot] = ITEMS[itemId];
+          renderInventory();
+          return true;
+        }
+        return false;
+      }
+
+      function dropEquippedItem() {
+        const itemToDrop = inventory[activeSlot];
+        if (!itemToDrop) return;
+        const dropPosition = new THREE.Vector3();
+        camera.getWorldPosition(dropPosition);
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        dropPosition.add(direction.multiplyScalar(2));
+        dropPosition.y = camera.position.y;
+        const geometry = new THREE.BoxGeometry(
+          wallSize * 0.3,
+          wallSize * 0.3,
+          wallSize * 0.3
+        );
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.copy(dropPosition);
+        scene.add(mesh);
+        itemPickups.push({ mesh: mesh, id: itemToDrop.id });
+        inventory[activeSlot] = null;
+        renderInventory();
+        updateEquippedItem();
+      }
+
+      function updateEquippedItem() {
+        Object.values(ITEMS).forEach((item) => {
+          if (item.onUnequip) item.onUnequip(camera);
+        });
+        if (camera.equippedModel) {
+          camera.remove(camera.equippedModel);
+          camera.equippedModel = null;
+        }
+        const equipped = inventory[activeSlot];
+        if (equipped) {
+          if (equipped.onEquip) {
+            equipped.onEquip(scene, camera);
+          }
+          if (equipped.createModel) {
+            const model = equipped.createModel();
+            model.position.set(0.3, -0.4, -0.6);
+            model.rotation.y = -0.3;
+            camera.add(model);
+            camera.equippedModel = model;
+          }
+        }
+      }
+
+      function renderInventory() {
+        hotbarElement.innerHTML = "";
+        inventoryGridElement.innerHTML = "";
+        for (let i = 0; i < 9; i++) {
+          const item = inventory[i];
+          const slot = document.createElement("div");
+          slot.className = "inventory-slot";
+          slot.dataset.index = i;
+          if (item) {
+            slot.style.backgroundImage = `url(${item.texture()})`;
+          }
+          if (i === activeSlot) {
+            slot.classList.add("active");
+          }
+          hotbarElement.appendChild(slot.cloneNode(true));
+          inventoryGridElement.appendChild(slot);
+        }
+        addDragDropListeners();
+      }
+
+      function addDragDropListeners() {
+        let draggedItemIndex = null;
+        document
+          .querySelectorAll("#inventory-grid .inventory-slot")
+          .forEach((slot) => {
+            slot.setAttribute("draggable", true);
+            slot.addEventListener("dragstart", (e) => {
+              draggedItemIndex = parseInt(e.target.dataset.index);
+              e.dataTransfer.effectAllowed = "move";
+            });
+            slot.addEventListener("dragover", (e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+            });
+            slot.addEventListener("drop", (e) => {
+              e.preventDefault();
+              const droppedOnIndex = parseInt(e.target.dataset.index);
+              if (
+                draggedItemIndex !== null &&
+                droppedOnIndex !== draggedItemIndex
+              ) {
+                [inventory[draggedItemIndex], inventory[droppedOnIndex]] = [
+                  inventory[droppedOnIndex],
+                  inventory[draggedItemIndex],
+                ];
+                renderInventory();
+                updateEquippedItem();
+              }
+              draggedItemIndex = null;
+            });
+          });
+      }
+
+      function safeRequestPointerLock() {
+        if (document.pointerLockElement === canvasElement) {
+          return;
+        }
+        const promise = canvasElement.requestPointerLock({
+          unadjustedMovement: true,
+        });
+        if (promise instanceof Promise) {
+          promise.catch((error) => {});
+        }
+      }
+
+      camera.rotation.order = "YXZ";
+      camera.userData.headY = playerHeight; // For crouch lerping
+      const keys = {};
+
+      // NEW: Jump physics variables
+      let playerVelocityY = 0;
+      let isGrounded = true;
+      const gravity = -25;
+      const jumpForce = 9;
+
+      document.addEventListener("keydown", (e) => {
+        keys[e.code] = true;
+        if (e.code === "Escape" && isAnimating) {
+          togglePause();
+        }
+        if (e.code === "KeyE" && isAnimating && !isPaused) {
+          toggleInventory();
+        }
+        // NEW: Jump listener
+        if (
+          e.code === "Space" &&
+          isGrounded &&
+          stamina > 10 &&
+          !isPaused &&
+          !isInventoryOpen
+        ) {
+          playerVelocityY = jumpForce;
+          isGrounded = false;
+          stamina = Math.max(0, stamina - 10); // Jumping costs stamina
+        }
+
+        if (e.code.startsWith("Digit")) {
+          const slotIndex = parseInt(e.code.substring(5)) - 1;
+          if (slotIndex >= 0 && slotIndex < 9) {
+            activeSlot = slotIndex;
+            renderInventory();
+            updateEquippedItem();
+          }
+        }
+        if (e.code === "KeyF" && !isInventoryOpen) {
+          const equipped = inventory[activeSlot];
+          if (equipped && equipped.onUse) {
+            equipped.onUse(camera);
+          } else {
+            checkForPickup();
+          }
+        }
+      });
+      document.addEventListener("keyup", (e) => {
+        keys[e.code] = false;
+      });
+
+      function isWall(x, z, y = camera.position.y) {
+        const floor = Math.max(0, Math.floor(y / storyHeight));
+        const mapX = Math.floor(x / wallSize);
+        const mapZ = Math.floor(z / wallSize);
+        const level = LEVELS[currentLevelIndex];
+
+        let tile;
+        if (level.isChunked) {
+          tile = level.getTile(mapX, floor, mapZ);
+        } else {
+          if (
+            !maze[floor] ||
+            mapZ < 0 ||
+            mapZ >= maze[floor].length ||
+            mapX < 0 ||
+            mapX >= maze[floor][0].length
+          ) {
+            return true; // Out of bounds
+          }
+          tile = maze[floor][mapZ][mapX];
+        }
+        // NEW: Window (tile 7) is also a wall
+        return tile === 1 || tile === 7;
+      }
+
+      function getTileAt(x, z, y = camera.position.y) {
+        const floor = Math.max(0, Math.floor(y / storyHeight));
+        const mapX = Math.floor(x / wallSize);
+        const mapZ = Math.floor(z / wallSize);
+        const level = LEVELS[currentLevelIndex];
+
+        if (level.isChunked) {
+          return level.getTile(mapX, floor, mapZ);
+        }
+
+        if (
+          !maze[floor] ||
+          mapZ < 0 ||
+          mapZ >= maze[floor].length ||
+          mapX < 0 ||
+          mapX >= maze[floor][0].length
+        ) {
+          return 1; // Out of bounds is a wall
+        }
+        return maze[floor][mapZ][mapX];
+      }
+
+      // --- 8. GAME LOOP & STATE MANAGEMENT ---
+      let isAnimating = false,
+        isPaused = false;
+      let time = 0,
+        playerSpeed = 0.15;
+      let currentLevelIndex = 0;
+      let isBlackout = false,
+        blackoutTimer = 5;
+      let waterMaterial; // For Pool Rooms
+
+      // FIX: Rebuilt function for fixed-grid levels
+      function buildFixedLevelGeometry(level) {
+        // Materials (FIX: Use cache)
+        if (!materialCache.wall) {
+          materialCache.wall = new THREE.MeshStandardMaterial({
+            map: level.visuals.wallTexture(),
+            roughness: 0.9,
+            metalness: 0.1,
+          });
+        }
+        if (!materialCache.floor) {
+          materialCache.floor = new THREE.MeshStandardMaterial({
+            map: level.visuals.floorTexture(),
+            side: THREE.DoubleSide,
+          });
+        }
+        if (!materialCache.ceiling) {
+          materialCache.ceiling = new THREE.MeshStandardMaterial({
+            map: level.visuals.ceilingTexture(),
+            side: THREE.DoubleSide,
+          });
+        }
+        if (!materialCache.ramp) {
+          materialCache.ramp = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa,
+            map: level.visuals.floorTexture(),
+          });
+        }
+        if (!materialCache.pit) {
+          materialCache.pit = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        }
+
+        const wallMat = materialCache.wall;
+        const floorMat = materialCache.floor;
+        const ceilingMat = materialCache.ceiling;
+        const rampMat = materialCache.ramp;
+        const pitMat = materialCache.pit;
+        let windowWallMat; // NEW
+
+        if (currentLevelIndex === 4) {
+          // Pool Rooms
+          if (!materialCache.water) {
+            materialCache.water = new THREE.MeshStandardMaterial({
+              color: 0x5ab8b8,
+              transparent: true,
+              opacity: 0.8,
+              roughness: 0.1,
+              metalness: 0.2,
+            });
+          }
+          waterMaterial = materialCache.water; // update global
+
+          // NEW: Window material
+          if (!materialCache.windowWall) {
+            materialCache.windowWall = new THREE.MeshStandardMaterial({
+              map: level.visuals.wallTexture(), // Use the tile texture
+              emissive: 0xeeffff,
+              emissiveIntensity: 0.7,
+              roughness: 0.2,
+              metalness: 0,
+            });
+          }
+          windowWallMat = materialCache.windowWall; // update local
+
+          // NEW: Emissive ceiling material
+          if (!materialCache.poolCeiling) {
+            materialCache.poolCeiling = new THREE.MeshStandardMaterial({
+              map: level.visuals.ceilingTexture(),
+              side: THREE.DoubleSide,
+              emissive: 0xffffee,
+              emissiveIntensity: 0.8,
+            });
+          }
+        }
+
+        const ceilingH = level.ceilingHeight || storyHeight;
+        const wallGeo = new THREE.BoxGeometry(wallSize, ceilingH, wallSize);
+        const tileFloorGeo = new THREE.PlaneGeometry(wallSize, wallSize);
+        const tileCeilGeo = new THREE.PlaneGeometry(wallSize, wallSize);
+        const waterGeo = new THREE.PlaneGeometry(wallSize, wallSize);
+
+        for (let f = 0; f < maze.length; f++) {
+          const yOffset = f * storyHeight;
+          const height = maze[f].length;
+          const width = maze[f][0].length;
+
+          for (let z = 0; z < height; z++) {
+            for (let x = 0; x < width; x++) {
+              const tile = maze[f][z][x];
+              const worldX = x * wallSize + wallSize / 2;
+              const worldZ = z * wallSize + wallSize / 2;
+
+              // 1. Add Floor (if not a wall or pit)
+              if (tile !== 1 && tile !== 5 && tile !== 7) {
+                const floor = new THREE.Mesh(tileFloorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.set(worldX, yOffset, worldZ);
+                floor.receiveShadow = true;
+                scene.add(floor);
+              }
+
+              // 2. Add Ceiling (if not a wall or ramp)
+              if (tile !== 1 && tile !== 3 && tile !== 4 && tile !== 7) {
+                let mat = ceilingMat;
+                if (currentLevelIndex === 4) {
+                  // NEW: Emissive ceiling for poolrooms
+                  // FIX: Use cached material instead of creating a new one in the loop
+                  mat = materialCache.poolCeiling;
+                }
+                const ceiling = new THREE.Mesh(tileCeilGeo, mat);
+                ceiling.rotation.x = Math.PI / 2;
+                ceiling.position.set(worldX, yOffset + ceilingH, worldZ);
+                scene.add(ceiling);
+              }
+
+              // 3. Add Tile-Specific Geometry
+              if (tile === 1) {
+                // Wall
+                const wall = new THREE.Mesh(wallGeo, wallMat);
+                wall.position.set(worldX, yOffset + ceilingH / 2, worldZ);
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                scene.add(wall);
+              } else if (tile === 7) {
+                // NEW: Window Wall
+                const wall = new THREE.Mesh(wallGeo, windowWallMat);
+                wall.position.set(worldX, yOffset + ceilingH / 2, worldZ);
+                wall.castShadow = false;
+                wall.receiveShadow = true;
+                scene.add(wall);
+                // Add floor under window
+                const floor = new THREE.Mesh(tileFloorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.set(worldX, yOffset, worldZ);
+                floor.receiveShadow = true;
+                scene.add(floor);
+                // Add ceiling over window
+                const ceiling = new THREE.Mesh(tileCeilGeo, ceilingMat);
+                ceiling.rotation.x = Math.PI / 2;
+                ceiling.position.set(worldX, yOffset + ceilingH, worldZ);
+                scene.add(ceiling);
+              } else if (tile === 3 || tile === 4) {
+                // Ramp
+                const rampGeo = new THREE.PlaneGeometry(
+                  wallSize,
+                  Math.sqrt(ceilingH ** 2 + wallSize ** 2)
+                );
+                const ramp = new THREE.Mesh(rampGeo, rampMat);
+                ramp.position.set(worldX, yOffset + ceilingH / 2, worldZ);
+                ramp.rotation.x = -Math.atan(ceilingH / wallSize);
+                scene.add(ramp);
+              } else if (tile === 5) {
+                // Pit (FIX: Visible Pit)
+                const pit = new THREE.Mesh(tileFloorGeo, pitMat);
+                pit.rotation.x = -Math.PI / 2;
+                pit.position.set(worldX, yOffset - 10, worldZ);
+                scene.add(pit);
+              } else if (tile === 6) {
+                // Water (for Pool Rooms)
+                const water = new THREE.Mesh(waterGeo, waterMaterial); // FIX: uses cached material
+                water.rotation.x = -Math.PI / 2;
+                water.position.set(worldX, yOffset + 0.05, worldZ); // Slightly above floor
+                scene.add(water);
+              }
+
+              // 4. Add Lights
+              if (level.addPointLights && Math.random() < 0.02 && tile !== 1) {
+                const pointLight = new THREE.PointLight(0xffffdd, 1.2, 25);
+                pointLight.position.set(
+                  worldX,
+                  yOffset + ceilingH - 0.5,
+                  worldZ
+                );
+                // FIX: Setting castShadow to false. Too many shadow-casting lights
+                // was causing the 'MAX_TEXTURE_IMAGE_UNITS' error and black screen.
+                pointLight.castShadow = false;
+                scene.add(pointLight);
+              }
+            }
+          }
+        }
+      }
+
+      function animate() {
+        if (!isAnimating || isPaused || isInventoryOpen) {
+          if (isAnimating) requestAnimationFrame(animate);
+          return;
+        }
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+        time += delta;
+
+        // FIX: Update chunks *every frame* for chunked levels
+        if (LEVELS[currentLevelIndex].isChunked) {
+          updateChunks();
+        }
+
+        // Player movement
+        const baseSpeed = playerSpeed;
+        const currentTile = getTileAt(
+          camera.position.x,
+          camera.position.z,
+          camera.position.y
+        );
+        const inWater = currentTile === 6;
+
+        isSprinting =
+          keys["ShiftLeft"] && stamina > 0 && !inWater && isGrounded;
+        let speed = baseSpeed * (isSprinting ? sprintSpeedMultiplier : 1);
+        if (inWater) speed *= 0.5; // Slow down in water
+
+        const moveVector = new THREE.Vector3();
+        if (keys["KeyW"] || keys["ArrowUp"]) moveVector.z -= 1;
+        if (keys["KeyS"] || keys["ArrowDown"]) moveVector.z += 1;
+        if (keys["KeyA"] || keys["ArrowLeft"]) moveVector.x -= 1;
+        if (keys["KeyD"] || keys["ArrowRight"]) moveVector.x += 1;
+
+        if (moveVector.lengthSq() > 0) {
+          moveVector.normalize().multiplyScalar(speed);
+          moveVector.applyEuler(camera.rotation);
+          const y = camera.position.y;
+          const newPosX = camera.position.x + moveVector.x;
+          if (
+            !isWall(
+              newPosX + Math.sign(moveVector.x) * playerColliderRadius,
+              camera.position.z,
+              y
+            )
+          ) {
+            camera.position.x = newPosX;
+          }
+          const newPosZ = camera.position.z + moveVector.z;
+          if (
+            !isWall(
+              camera.position.x,
+              newPosZ + Math.sign(moveVector.z) * playerColliderRadius,
+              y
+            )
+          ) {
+            camera.position.z = newPosZ;
+          }
+        }
+
+        // --- Player Y-Position (Gravity & Jump) ---
+        const playerFloorY =
+          Math.floor(camera.position.y / storyHeight) * storyHeight;
+        const level = LEVELS[currentLevelIndex];
+        let ceilingHeight;
+
+        if (level.isChunked) {
+          const { cy } = getPlayerChunkCoords();
+          ceilingHeight = level.getCeilingHeight(
+            Math.floor(camera.position.x / wallSize),
+            cy,
+            Math.floor(camera.position.z / wallSize)
+          );
+        } else {
+          ceilingHeight = level.ceilingHeight || storyHeight;
+        }
+        const absoluteCeilingY = playerFloorY + ceilingHeight;
+
+        const waterDepth = 1.5; // How far player sinks
+        const targetFloorY = inWater ? playerFloorY - waterDepth : playerFloorY;
+
+        const targetHeadHeight =
+          keys["ControlLeft"] || keys["KeyC"] ? crouchHeight : playerHeight;
+        camera.userData.headY = THREE.MathUtils.lerp(
+          camera.userData.headY,
+          targetHeadHeight,
+          delta * 10
+        );
+
+        const groundY = targetFloorY + camera.userData.headY;
+
+        if (!isGrounded) {
+          playerVelocityY += gravity * delta;
+        }
+
+        let newPlayerY = camera.position.y + playerVelocityY * delta;
+
+        // Check for ceiling bonk
+        if (newPlayerY > absoluteCeilingY - 0.2) {
+          newPlayerY = absoluteCeilingY - 0.2;
+          playerVelocityY = 0;
+        }
+
+        // Check for ground
+        if (newPlayerY <= groundY) {
+          newPlayerY = groundY;
+          isGrounded = true;
+          playerVelocityY = 0;
+        } else {
+          isGrounded = false;
+        }
+
+        // Head bob
+        let yBob = 0;
+        if (isGrounded && moveVector.lengthSq() > 0.001) {
+          const bobFrequency = isSprinting ? 12 : 7;
+          const bobAmplitude =
+            (isSprinting ? 0.08 : 0.05) * (inWater ? 0.5 : 1);
+          yBob = Math.sin(time * bobFrequency) * bobAmplitude;
+        }
+
+        camera.position.y = newPlayerY + yBob;
+        // --- End of Player Y-Position ---
+
+        // Stamina
+        if (isSprinting && moveVector.lengthSq() > 0) {
+          stamina = Math.max(0, stamina - staminaDrainRate * delta);
+        } else if (stamina < maxStamina && !keys["Space"]) {
+          // Regen if not jumping
+          stamina = Math.min(maxStamina, stamina + staminaRegenRate * delta);
+        }
+        staminaBar.style.width = `${(stamina / maxStamina) * 100}%`;
+
+        // Sanity
+        let sanityDrain = 0.05; // Base drain
+        if (isBlackout) sanityDrain = 1;
+        // Check for smilers
+        activeEntities.forEach((e) => {
+          if (e.id === "smiler" && e.model.visible) {
+            if (camera.position.distanceTo(e.model.position) < 20) {
+              sanityDrain += 3;
+            }
+          }
+        });
+        sanity = Math.max(0, sanity - sanityDrain * delta);
+        sanityBar.style.width = `${(sanity / maxSanity) * 100}%`;
+        if (sanity <= 0) {
+          gameOver("You lost your mind.");
+          return;
+        }
+
+        updatePickupPrompt();
+
+        activeEntities.forEach((entity) => {
+          if (ENTITIES[entity.id] && ENTITIES[entity.id].update) {
+            if (entity.id === "smiler" && !isBlackout) {
+              return;
+            }
+            const currentFloor = Math.floor(camera.position.y / storyHeight);
+            ENTITIES[entity.id].update(
+              entity,
+              camera,
+              scene,
+              maze[currentFloor]
+            );
+          }
+        });
+
+        // Lighting effects
+        if (isBlackout) {
+          blackoutTimer -= delta;
+          if (blackoutTimer <= 0) {
+            isBlackout = false;
+            ambientLight.intensity = level.visuals.ambientLight.intensity;
+            activeEntities.forEach((e) => {
+              if (e.id === "smiler") e.model.visible = false;
+            });
+          }
+        } else {
+          if (
+            level.lighting &&
+            level.lighting.blackoutChance &&
+            Math.random() < level.lighting.blackoutChance
+          ) {
+            isBlackout = true;
+            blackoutTimer = Math.random() * 4 + 2;
+            ambientLight.intensity = 0.01;
+            activeEntities.forEach((e) => {
+              if (e.id === "smiler") e.model.visible = true;
+            });
+          } else if (level.lighting && level.lighting.flicker) {
+            ambientLight.intensity =
+              level.visuals.ambientLight.intensity *
+              (1 + Math.sin(time * 30) * 0.2);
+          } else {
+            // Keep base intensity for non-flicker levels
+            ambientLight.intensity = level.visuals.ambientLight.intensity;
+          }
+        }
+
+        // Pool rooms water animation
+        if (waterMaterial) {
+          waterMaterial.opacity = 0.8 + Math.sin(time) * 0.05;
+        }
+
+        renderer.render(scene, camera);
+
+        const playerPos = camera.position;
+        const mapX = Math.floor(playerPos.x / wallSize);
+        const mapZ = Math.floor(playerPos.z / wallSize);
+        const floor = Math.floor(playerPos.y / storyHeight);
+        const currentTileOnGrid = getTileAt(
+          playerPos.x,
+          playerPos.z,
+          playerPos.y
+        );
+
+        if (playerPos.y < -10) {
+          gameOver("You fell out of reality.");
+          return;
+        }
+
+        if (currentTileOnGrid === 5) {
+          gameOver("You fell into the abyss.");
+          return;
+        }
+        if (
+          currentTileOnGrid === 10 &&
+          level.exitType === "redRoomTransition"
+        ) {
+          levelComplete();
+        } else if (currentTileOnGrid === 9) {
+          if (level.exitType === "noclip") {
+            if (!noClipExitPos) noClipExitPos = playerPos.clone();
+            if (playerPos.distanceTo(noClipExitPos) > 5) levelComplete();
+          } else {
+            levelComplete();
+          }
+        }
+        if (currentTileOnGrid === 3 || currentTileOnGrid === 4) {
+          const rampDirection = currentTileOnGrid === 3 ? 1 : -1;
+          camera.position.y += 0.1 * rampDirection * (baseSpeed / 0.15);
+        }
+      }
+
+      // FIX: New function to find a valid spawn point
+      function findValidSpawn(floorMaze) {
+        if (floorMaze.userData && floorMaze.userData.rooms) {
+          const safeRooms = floorMaze.userData.rooms.filter(
+            (r) => !r.isPitfallRoom
+          );
+          let room;
+          if (safeRooms.length > 0) {
+            room = safeRooms[Math.floor(Math.random() * safeRooms.length)];
+          } else if (floorMaze.userData.rooms.length > 0) {
+            room = floorMaze.userData.rooms[0]; // Failsafe
+          }
+
+          if (room) {
+            // Try to find a non-pit tile
+            for (let i = 0; i < 20; i++) {
+              const x = room.x + Math.floor(Math.random() * room.width);
+              const z = room.z + Math.floor(Math.random() * room.height);
+              if (floorMaze[z][x] === 0 || floorMaze[z][x] === 6) {
+                return {
+                  x: x * wallSize + wallSize / 2,
+                  z: z * wallSize + wallSize / 2,
+                };
+              }
+            }
+            // Failsafe: return center (prefer non-water if possible)
+            const centerX = (room.x + room.width / 2) * wallSize + wallSize / 2;
+            const centerZ =
+              (room.z + room.height / 2) * wallSize + wallSize / 2;
+            if (
+              floorMaze[Math.floor(centerZ / wallSize)][
+                Math.floor(centerX / wallSize)
+              ] !== 5
+            ) {
+              return { x: centerX, z: centerZ };
+            }
+          }
+        }
+        // Absolute failsafe for levels with no room data
+        return { x: 1.5 * wallSize, z: 1.5 * wallSize };
+      }
+
+      function startGame(levelIndex) {
+        fadeOverlay.style.opacity = 1;
+        setTimeout(() => {
+          currentLevelIndex = levelIndex;
+          const level = LEVELS[currentLevelIndex];
+
+          while (scene.children.length > 0) {
+            const obj = scene.children[0];
+            scene.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+          }
+
+          setupSceneForLevel(level);
+
+          mainMenu.style.display = "none";
+          levelSelectMenu.style.display = "none";
+          pauseMenu.style.display = "none";
+          levelCompleteMenu.style.display = "none";
+          gameOverMenu.style.display = "none";
+
+          maze = generateMaze(
+            level.mazeSize.width,
+            level.mazeSize.height,
+            level.is3D,
+            level.numFloors
+          );
+          if (level.postProcessMaze) {
+            maze = level.postProcessMaze(maze);
+          }
+
+          // Player starting position (FIXED)
+          const startPos = findValidSpawn(maze[0]);
+          camera.position.set(startPos.x, playerHeight, startPos.z);
+          camera.rotation.set(0, 0, 0);
+          camera.userData.headY = playerHeight;
+          isGrounded = true; // NEW: Reset jump state
+          playerVelocityY = 0; // NEW: Reset jump state
+
+          if (level.isChunked) {
+            updateChunks(); // Initial chunk load
+          } else {
+            buildFixedLevelGeometry(level);
+          }
+
+          // Spawn entities
+          activeEntities = [];
+          if (level.entities) {
+            level.entities.forEach((entityId) => {
+              const entityData = ENTITIES[entityId];
+              if (entityData) {
+                const model = entityData.createModel();
+                const spawnPos = findValidSpawn(maze[0]); // Spawn anywhere valid
+                model.position.set(spawnPos.x, playerHeight, spawnPos.z);
+
+                if (entityId === "smiler") {
+                  model.visible = false; // Smilers start invisible
+                }
+                scene.add(model);
+                activeEntities.push({ id: entityId, model: model });
+              }
+            });
+          }
+
+          playerSpeed = level.playerSpeed;
+          isAnimating = true;
+          isPaused = false;
+          stamina = maxStamina;
+          sanity = maxSanity;
+          inventory.fill(null);
+          renderInventory();
+          updateEquippedItem();
+
+          instructions.style.display = "block";
+          hotbarElement.style.display = "flex";
+          staminaBarContainer.style.display = "block";
+          sanityBarContainer.style.display = "block";
+
+          if (backgroundHum && !backgroundHum.isPlaying) backgroundHum.play();
+
+          safeRequestPointerLock();
+          animate();
+          fadeOverlay.style.opacity = 0;
+        }, 1500);
+      }
+
+      function levelComplete() {
+        isAnimating = false;
+        document.exitPointerLock();
+        hideGameUI();
+        levelCompleteMenu.style.display = "flex";
+        if (backgroundHum && backgroundHum.isPlaying) backgroundHum.stop();
+      }
+
+      function gameOver(message) {
+        isAnimating = false;
+        document.exitPointerLock();
+        hideGameUI();
+        gameOverMenu.style.display = "flex";
+        const titleElement = gameOverMenu.querySelector("h1");
+        if (titleElement) titleElement.textContent = message || "YOU DIED";
+        if (backgroundHum && backgroundHum.isPlaying) backgroundHum.stop();
+      }
+
+      function togglePause() {
+        if (isInventoryOpen) return;
+        isPaused = !isPaused;
+        pauseMenu.style.display = isPaused ? "flex" : "none";
+        if (isPaused) {
+          document.exitPointerLock();
+        } else {
+          safeRequestPointerLock();
+          animate();
+        }
+      }
+
+      function toggleInventory() {
+        isInventoryOpen = !isInventoryOpen;
+        inventoryGridElement.style.display = isInventoryOpen ? "flex" : "none";
+        actionButtonsElement.style.display = isInventoryOpen ? "flex" : "none";
+        hotbarElement.style.display = isInventoryOpen ? "none" : "flex";
+        if (isInventoryOpen) {
+          isPaused = true;
+          document.exitPointerLock();
+        } else {
+          isPaused = false;
+          safeRequestPointerLock();
+          animate();
+        }
+      }
+
+      function updatePickupPrompt() {
+        let closestItem = null;
+        let minDistance = 2.5;
+        const playerPos = camera.position;
+        itemPickups.forEach((item) => {
+          const distance = playerPos.distanceTo(item.mesh.position);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestItem = item;
+          }
+        });
+        if (closestItem) {
+          pickupPromptElement.style.display = "block";
+        } else {
+          pickupPromptElement.style.display = "none";
+        }
+      }
+
+      function checkForPickup() {
+        const playerPos = camera.position;
+        let pickupIndex = -1;
+        for (let i = 0; i < itemPickups.length; i++) {
+          if (playerPos.distanceTo(itemPickups[i].mesh.position) < 2.5) {
+            pickupIndex = i;
+            break;
+          }
+        }
+        if (pickupIndex !== -1) {
+          const pickedUpItem = itemPickups[pickupIndex];
+          if (addItem(pickedUpItem.id)) {
+            scene.remove(pickedUpItem.mesh);
+            itemPickups.splice(pickupIndex, 1);
+          }
+        }
+      }
+
+      function hideGameUI() {
+        instructions.style.display = "none";
+        hotbarElement.style.display = "none";
+        inventoryGridElement.style.display = "none";
+        actionButtonsElement.style.display = "none";
+        staminaBarContainer.style.display = "none";
+        sanityBarContainer.style.display = "none";
+        pickupPromptElement.style.display = "none";
+      }
+
+      // --- 9. EVENT LISTENERS & INITIALIZATION ---
+      document.addEventListener("mousemove", (e) => {
+        if (document.pointerLockElement === canvasElement) {
+          camera.rotation.y -= e.movementX * 0.002;
+          camera.rotation.x -= e.movementY * 0.002;
+          camera.rotation.x = Math.max(
+            -Math.PI / 2,
+            Math.min(Math.PI / 2, camera.rotation.x)
+          );
+        }
+      });
+      document.getElementById("startBtn").addEventListener("click", () => {
+        mainMenu.style.display = "none";
+        levelSelectMenu.style.display = "flex";
+      });
+
+      document.querySelectorAll(".level-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          const levelIndex = parseInt(button.dataset.level);
+          startGame(levelIndex);
+        });
+      });
+
+      function showMainMenu() {
+        fadeOverlay.style.opacity = 0;
+        pauseMenu.style.display = "none";
+        levelSelectMenu.style.display = "none";
+        levelCompleteMenu.style.display = "none";
+        gameOverMenu.style.display = "none";
+        hideGameUI();
+        mainMenu.style.display = "flex";
+        isAnimating = false;
+        isPaused = false;
+        if (backgroundHum.isPlaying) backgroundHum.stop();
+      }
+
+      document
+        .getElementById("levelSelectBackBtn")
+        .addEventListener("click", showMainMenu);
+      document
+        .getElementById("pauseBackToMenuBtn")
+        .addEventListener("click", showMainMenu);
+      document
+        .getElementById("completeBackToMenuBtn")
+        .addEventListener("click", showMainMenu);
+      document
+        .getElementById("gameOverBackToMenuBtn")
+        .addEventListener("click", showMainMenu);
+
+      document
+        .getElementById("resumeBtn")
+        .addEventListener("click", togglePause);
+
+      document.getElementById("retryBtn").addEventListener("click", () => {
+        startGame(currentLevelIndex);
+      });
+
+      document.getElementById("nextLevelBtn").addEventListener("click", () => {
+        const nextIndex = currentLevelIndex + 1;
+        if (nextIndex < LEVELS.length) {
+          startGame(nextIndex);
+        } else {
+          showMainMenu(); // Or a "You Win!" screen
+        }
+      });
+
+      canvasElement.addEventListener("click", () => {
+        if (!isPaused && !isInventoryOpen) {
+          safeRequestPointerLock();
+        }
+      });
+
+      document.addEventListener(
+        "pointerlockchange",
+        () => {
+          if (
+            document.pointerLockElement !== canvasElement &&
+            isAnimating &&
+            !isInventoryOpen
+          ) {
+            isPaused = true;
+            pauseMenu.style.display = "flex";
+          }
+        },
+        false
+      );
+
+      useBtn.addEventListener("click", () => {
+        const equipped = inventory[activeSlot];
+        if (equipped && equipped.onUse) {
+          equipped.onUse(camera);
+        }
+      });
+
+      dropBtn.addEventListener("click", () => {
+        // Drop item logic was moved to a global function, this button is in inventory mode
+        if (isInventoryOpen) dropEquippedItem();
+      });
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      renderInventory();
+    </script>
+  </body>
+</html>

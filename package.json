@@ -1,0 +1,25 @@
+{
+  "gameTitle": "Backrooms Game",
+  "levels": [
+    {
+      "id": 0,
+      "name": "Level 0 - Endless Office Maze",
+      "file": "Level0.html"
+    },
+    {
+      "id": 1,
+      "name": "Level 1 - Parking Garage",
+      "file": "Level1.html"
+    },
+    {
+      "id": 37,
+      "name": "Level 37 - Poolrooms",
+      "file": "Level37.html"
+    },
+    {
+      "id": "TEMP",
+      "name": "Old Backrooms Game",
+      "file": "TEMP.html"
+    }
+  ]
+}

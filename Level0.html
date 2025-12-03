@@ -1,0 +1,3976 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Level 0 - Endless Office</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        margin: 0;
+        background-color: #000;
+        color: #fff;
+        overflow: hidden;
+        /* Improved text selection for better UX */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      #blocker {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+      #instructions {
+        width: 50%;
+        padding: 20px;
+        background-color: #111;
+        border: 2px solid #333;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(255, 255, 100, 0.2);
+        cursor: pointer;
+      }
+      #instructions h1 {
+        font-size: 2.5em;
+        color: #ffff99;
+        margin-top: 0;
+      }
+      #instructions p {
+        font-size: 1.2em;
+        color: #ccc;
+        line-height: 1.6;
+      }
+      #instructions .key {
+        background-color: #333;
+        color: #fff;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-weight: bold;
+        font-family: "Courier New", Courier, monospace;
+        border: 1px solid #555;
+      }
+
+      /* HUD - Heads Up Display */
+      #hud {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: white;
+        z-index: 100;
+        display: none; /* Hidden until game starts */
+      }
+      .hud-item {
+        margin-bottom: 10px;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #444;
+        width: 200px;
+      }
+      .hud-item label {
+        font-size: 1em;
+        font-weight: bold;
+        color: #ffff99;
+        display: block;
+        margin-bottom: 5px;
+      }
+      .bar-container {
+        width: 100%;
+        height: 20px;
+        background-color: #333;
+        border-radius: 5px;
+        overflow: hidden;
+        border: 1px solid #555;
+      }
+      #stamina-bar,
+      #sanity-bar {
+        height: 100%;
+        width: 100%;
+        background-color: #4caf50; /* Green for stamina */
+        transition: width 0.2s linear;
+      }
+      #sanity-bar {
+        background-color: #4c8faf; /* Blue for sanity */
+      }
+
+      /* Crosshair */
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 4px;
+        height: 4px;
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 100;
+        display: none;
+      }
+
+      /* Interaction Prompt */
+      #interaction-prompt {
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 10px;
+        font-size: 1.1em;
+        display: none;
+        z-index: 100;
+      }
+      #interaction-prompt .key {
+        background-color: #eee;
+        color: #000;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+
+      /* Inventory Screen */
+      #inventory-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.85);
+        display: none; /* Hidden by default */
+        justify-content: center;
+        align-items: center;
+        z-index: 200;
+      }
+      #inventory-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 80px);
+        grid-gap: 15px;
+        background-color: #1a1a1a;
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px solid #444;
+      }
+      .inventory-slot {
+        width: 80px;
+        height: 80px;
+        background-color: #333;
+        border: 2px solid #555;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.9em;
+        color: #888;
+        position: relative;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+      }
+      .inventory-slot:hover,
+      .inventory-slot.selected {
+        background-color: #444;
+        border-color: #ffff99;
+      }
+      .inventory-slot .item-name {
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 3px 5px;
+        border-radius: 4px;
+        font-size: 0.8em;
+      }
+      .inventory-slot .item-quantity {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background-color: #ffff99;
+        color: #000;
+        font-weight: bold;
+        padding: 2px 5px;
+        border-radius: 50%;
+        font-size: 0.8em;
+      }
+      #inventory-controls {
+        margin-left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .inventory-button {
+        padding: 12px 20px;
+        background-color: #333;
+        color: #fff;
+        border: 2px solid #555;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1em;
+        transition: background-color 0.2s, border-color 0.2s;
+      }
+      .inventory-button:hover {
+        background-color: #444;
+        border-color: #ffff99;
+      }
+      .inventory-button:disabled {
+        background-color: #222;
+        color: #666;
+        border-color: #444;
+        cursor: not-allowed;
+      }
+
+      /* Hotbar */
+      #hotbar {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: grid;
+        grid-template-columns: repeat(3, 60px);
+        grid-gap: 10px;
+        z-index: 100;
+      }
+      .hotbar-slot {
+        width: 60px;
+        height: 60px;
+        background-color: rgba(51, 51, 51, 0.7);
+        border: 2px solid #555;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #888;
+        font-size: 0.8em;
+        position: relative;
+      }
+      .hotbar-slot.selected {
+        border-color: #ffff99;
+        background-color: rgba(68, 68, 66, 0.9);
+      }
+      .hotbar-slot .item-name {
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 0.7em;
+      }
+      .hotbar-slot .hotkey-label {
+        position: absolute;
+        top: 2px;
+        left: 4px;
+        color: #ccc;
+        font-size: 0.9em;
+        font-weight: bold;
+      }
+      .hotbar-slot .item-quantity {
+        position: absolute;
+        bottom: 3px;
+        right: 3px;
+        background-color: #ffff99;
+        color: #000;
+        font-weight: bold;
+        padding: 1px 4px;
+        border-radius: 50%;
+        font-size: 0.7em;
+      }
+
+      /* Game Over / Win Screens */
+      .overlay-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        display: none; /* Hidden by default */
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        z-index: 300;
+        color: #ff4d4d;
+      }
+      .overlay-screen h1 {
+        font-size: 4em;
+        margin: 0;
+      }
+      .overlay-screen p {
+        font-size: 1.5em;
+        color: #ccc;
+      }
+      #game-win-screen {
+        color: #4dff4d;
+      }
+      .restart-button {
+        margin-top: 20px;
+        padding: 15px 30px;
+        font-size: 1.2em;
+        background-color: #333;
+        color: #fff;
+        border: 2px solid #555;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+      }
+      .restart-button:hover {
+        background-color: #444;
+        border-color: #ffff99;
+      }
+    </style>
+    <!-- Importmap for Three.js modules -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="blocker">
+      <div id="instructions">
+        <h1>Level 0: The Endless Office</h1>
+        <p>
+          You've no-clipped out of reality. All that remains is the hum of the
+          fluorescents and the smell of damp carpet.
+        </p>
+        <p>
+          <span class="key">Click to Begin</span>
+        </p>
+        <br />
+        <p>
+          <span class="key">W, A, S, D</span> - Move |
+          <span class="key">Mouse</span> - Look |
+          <span class="key">Space</span> - Jump
+        </p>
+        <p>
+          <span class="key">Shift</span> - Sprint |
+          <span class="key">Ctrl</span> - Crouch | <span class="key">F</span> -
+          Flashlight
+        </p>
+        <p>
+          <span class="key">E</span> - Inventory |
+          <span class="key">1, 2, 3</span> - Hotbar |
+          <span class="key">Q</span> - Use Item
+        </p>
+        <p><span class="key">Click</span> - Pick Up Item</p>
+      </div>
+    </div>
+
+    <!-- HUD Elements -->
+    <div id="hud">
+      <div class="hud-item">
+        <label>Stamina</label>
+        <div class="bar-container">
+          <div id="stamina-bar"></div>
+        </div>
+      </div>
+      <div class="hud-item">
+        <label>Sanity</label>
+        <div class="bar-container">
+          <div id="sanity-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="interaction-prompt">
+      Press <span class="key">E</span> to pick up
+    </div>
+
+    <!-- Inventory Screen -->
+    <div id="inventory-screen">
+      <div id="inventory-grid">
+        <!-- 9 slots will be generated by JS -->
+      </div>
+      <div id="inventory-controls">
+        <button class="inventory-button" id="inv-use">Use</button>
+        <button class="inventory-button" id="inv-drop">Drop</button>
+        <button class="inventory-button" id="inv-hotbar-1">
+          Move to Hotbar 1
+        </button>
+        <button class="inventory-button" id="inv-hotbar-2">
+          Move to Hotbar 2
+        </button>
+        <button class="inventory-button" id="inv-hotbar-3">
+          Move to Hotbar 3
+        </button>
+      </div>
+    </div>
+
+    <!-- Hotbar -->
+    <div id="hotbar">
+      <div class="hotbar-slot" id="hotbar-0">
+        <span class="hotkey-label">1</span>
+        <span class="item-name"></span>
+        <span class="item-quantity"></span>
+      </div>
+      <div class="hotbar-slot" id="hotbar-1">
+        <span class="hotkey-label">2</span>
+        <span class="item-name"></span>
+        <span class="item-quantity"></span>
+      </div>
+      <div class="hotbar-slot" id="hotbar-2">
+        <span class="hotkey-label">3</span>
+        <span class="item-name"></span>
+        <span class="item-quantity"></span>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="overlay-screen">
+      <div>
+        <h1>You Fell</h1>
+        <p>You fell into the darkness of the pit.</p>
+        <button class="restart-button" id="restart-button-dead">
+          Try Again
+        </button>
+      </div>
+    </div>
+
+    <!-- Win Screen -->
+    <div id="game-win-screen" class="overlay-screen">
+      <div>
+        <!-- MODIFIED: Added IDs for dynamic text -->
+        <h1 id="win-title">You Escaped...?</h1>
+        <p id="win-message">
+          You push through the discolored door... <br />...only to find yourself
+          somewhere else.
+        </p>
+        <button class="restart-button" id="restart-button-win">
+          Play Again
+        </button>
+        <!-- NEW: Main Menu Button -->
+        <button
+          class="restart-button"
+          id="main-menu-button-win"
+          style="margin-left: 10px"
+        >
+          Main Menu
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Game Script -->
+    <script type="module">
+      import * as THREE from "three";
+      import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+
+      let camera, scene, renderer, controls;
+      let playerVelocity = new THREE.Vector3();
+      let playerDirection = new THREE.Vector3();
+
+      const objects = []; // For collision detection
+      const interactableItems = []; // For item pickup
+
+      let moveForward = false;
+      let moveBackward = false;
+      let moveLeft = false;
+      let moveRight = false;
+      let canJump = false;
+      let isCrouching = false;
+      let isSprinting = false;
+
+      let prevTime = performance.now();
+
+      // Game state
+      let gameRunning = false;
+      let inventoryOpen = false;
+      let gameWon = false; // Flag to stop exit despawning after win
+      let isRedShiftActive = false; // Flag for red level shift
+      let redShiftActivationChunk = null; // NEW: Tracks where red shift started
+      const RED_SHIFT_EXIT_DISTANCE = 5; // NEW: Chunks to travel in red shift to exit
+
+      // --- NEW: Chunk Generation Queue ---
+      let chunkGenerationQueue = [];
+      let isGeneratingChunk = false;
+
+      // Player stats
+      let playerStamina = 100;
+      let playerSanity = 100;
+      const maxStamina = 100;
+      const maxSanity = 100;
+      let sanityDrainTimer = 0;
+
+      // Player physics constants
+      const playerSpeed = 8.0;
+      const playerSprintSpeed = 14.0;
+      const playerCrouchSpeed = 4.0;
+      const playerGravity = 30.0;
+      const playerJumpHeight = 8.0;
+      const playerHeight = 1.8;
+      const playerCrouchHeight = 1.0;
+      const playerRadius = 0.4; // Player collision radius
+
+      // Maze generation
+      const CHUNK_SIZE = 20; // 20m x 20m chunks
+      const WALL_HEIGHT = 3;
+      const WALL_THICKNESS = 0.2;
+      const TILE_SIZE = 1; // 1m x 1m ceiling tiles
+
+      // --- NEW: User-configurable variables ---
+      const LIGHTS_OUT_PROBABILITY = 0.50; // (15% chance for a dark chunk)
+      const MISSING_TILE_PROBABILITY = 0.08; // (Default: 0.08)
+      const CEILING_JUNK_DENSITY = 0.3; // (Default: 0.3)
+      const RED_SHIFT_DISTANCE = 20; // --- NEW: Chunks from spawn to trigger red shift
+
+      // --- NEW: Decal Customization ---
+      const RANDOM_TORN_WALLPAPER_PROBABILITY = 0.2; // (Default: 0.2) Chance for torn paper to spawn
+      const RANDOM_GRAFFITI_PROBABILITY = 0.1; // (Default: 0.1) Chance for random graffiti to spawn
+      const GUIDE_ARROW_PROBABILITY = 0.95; // (Default: 0.95) Chance for a guide arrow to spawn near the exit
+      const TORN_PAPER_MIN_WIDTH = 0.5; // (Default: 0.5)
+      const TORN_PAPER_MAX_WIDTH = 4.0; // (Default: 4.0, which is one wall panel)
+      const TORN_PAPER_MIN_HEIGHT = 0.5; // (Default: 0.5)
+      const TORN_PAPER_MAX_HEIGHT = 3.0; // (Default: 3.0, which is full wall height)
+
+      // Special rooms & Exit Logic
+      let exitChunkCoords = null; // Stores {x, z} of the current exit chunk, null if none spawned
+      let exitTriggerMesh = null; // Reference to the exit trigger mesh for removal
+      let exitSignMesh = null; // Reference to the exit sign mesh
+      let exitDoorFrameMesh = null; // Reference to the exit door frame
+      let exitDoorMesh = null; // Reference to the exit door
+      const MIN_EXIT_DISTANCE_SQ = 5 * 5; // Exit can only spawn beyond chunk distance 5 (squared)
+      const EXIT_SPAWN_PROBABILITY = 0.05; // 5% chance per eligible chunk
+
+      const PITFALL_PROBABILITY = 0.2; // 8% chance for a pitfall room
+      const PIT_GRID_SIZE = 5; // Grid size for pitfall room (9x9)
+      const PIT_PATH_WIDTH = 0.4; // Increased path width slightly
+      const PIT_PATH_HEIGHT = 0.2; // Height of the path beam itself
+      const PIT_WALL_COUNT = PIT_GRID_SIZE + 1; // Need lines on both sides of pits
+      const PIT_TOTAL_PATH_WIDTH = PIT_WALL_COUNT * PIT_PATH_WIDTH;
+      const PIT_SIZE = (CHUNK_SIZE - PIT_TOTAL_PATH_WIDTH) / PIT_GRID_SIZE; // Recalculated size of each pit
+      const PIT_DEPTH = 100; // How deep the pits go (Increased from 30)
+
+      let currentChunk = { x: 0, z: 0 };
+      let generatedChunks = new Map();
+      const globalRandom = Math.random; // Use unseeded random for pitfall/exit check initially
+
+      // --- DOM Elements ---
+      const blocker = document.getElementById("blocker");
+      const instructions = document.getElementById("instructions");
+      const hud = document.getElementById("hud");
+      const crosshair = document.getElementById("crosshair");
+      const staminaBar = document.getElementById("stamina-bar");
+      const sanityBar = document.getElementById("sanity-bar");
+      const interactionPrompt = document.getElementById("interaction-prompt");
+
+      const inventoryScreen = document.getElementById("inventory-screen");
+      const inventoryGrid = document.getElementById("inventory-grid");
+      const hotbar = [
+        document.getElementById("hotbar-0"),
+        document.getElementById("hotbar-1"),
+        document.getElementById("hotbar-2"),
+      ];
+      let selectedHotbarSlot = 0;
+
+      const invUseButton = document.getElementById("inv-use");
+      const invDropButton = document.getElementById("inv-drop");
+      const invHotbarButtons = [
+        document.getElementById("inv-hotbar-1"),
+        document.getElementById("inv-hotbar-2"),
+        document.getElementById("inv-hotbar-3"),
+      ];
+
+      const gameOverScreen = document.getElementById("game-over-screen");
+      const gameWinScreen = document.getElementById("game-win-screen");
+      const restartButtonDead = document.getElementById("restart-button-dead");
+      const restartButtonWin = document.getElementById("restart-button-win");
+      const mainMenuButtonWin = document.getElementById("main-menu-button-win"); // --- NEW
+
+      let flashlight, ambientLight;
+      let audioListener, humSound;
+      let wallpaperMaterial, // --- RE-ADDED
+        floorMaterial,
+        ceilingMaterial,
+        deskMaterial,
+        chairMaterial,
+        puddleMaterial,
+        pipeMaterial,
+        exitWallMaterial;
+
+      // --- RE-ADDED Decal Materials ---
+      let graffitiMaterial, // Base material for random graffiti
+        tornWallpaperMaterial; // New material for torn wallpaper
+
+      let pitPathMaterial, // Material for the paths in pit rooms
+        darkPitMaterial, // Dark material for inside pits
+        roofMaterial; // --- NEW: Material for the void roof
+
+      // --- Inventory System ---
+      let inventory = new Array(9).fill(null);
+      let hotbarItems = new Array(3).fill(null); // Mirrors the 3 hotbar slots
+      let selectedInventorySlot = -1;
+
+      // Item definitions
+      const ITEMS = {
+        flashlight: {
+          name: "Flashlight",
+          stackable: false,
+          use: (item, index, source) => {
+            toggleFlashlight();
+          },
+        },
+        almond_water: {
+          name: "Almond Water",
+          stackable: true,
+          maxStack: 5,
+          use: (item, index, source) => {
+            playerSanity = maxSanity;
+            item.quantity--;
+            if (item.quantity <= 0) {
+              if (source === "inventory") inventory[index] = null;
+              if (source === "hotbar") hotbarItems[index] = null;
+            }
+            updateInventoryUI();
+            updateHotbarUI();
+          },
+        },
+      };
+
+      // --- Texture Generation ---
+      /**
+       * Creates the BASE wallpaper texture, without decals.
+       */
+      function createWallpaperTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext("2d");
+
+        // 1. Base mono-yellow
+        context.fillStyle = "#C2B280"; // A sickly, slightly brownish yellow
+        context.fillRect(0, 0, 512, 512);
+
+        // 2. Subtle pattern
+        context.fillStyle = "rgba(0,0,0,0.02)";
+        for (let i = 0; i < 512; i += 8) {
+          context.fillRect(i, 0, 1, 512);
+          context.fillRect(0, i, 512, 1);
+        }
+
+        // 3. Grime and stains
+        for (let i = 0; i < 70; i++) {
+          context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.15 + 0.05})`;
+          context.beginPath();
+          context.arc(
+            Math.random() * 512,
+            Math.random() * 512,
+            Math.random() * 40 + 15,
+            0,
+            Math.PI * 2
+          );
+          context.fill();
+        }
+        context.fillStyle = `rgba(101, 67, 33, ${Math.random() * 0.2 + 0.1})`;
+        context.fillRect(
+          Math.random() * 512,
+          Math.random() * 512,
+          Math.random() * 80 + 40,
+          Math.random() * 80 + 40
+        );
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(4, 2); // Repeat texture 4x horizontally, 2x vertically
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function createCarpetTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext("2d");
+
+        // Damp carpet base
+        context.fillStyle = "#595142"; // Damp brownish-gray
+        context.fillRect(0, 0, 512, 512);
+
+        // Fibers
+        for (let i = 0; i < 20000; i++) {
+          context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.3})`;
+          context.fillRect(
+            Math.random() * 512,
+            Math.random() * 512,
+            1,
+            Math.random() * 3 + 1
+          );
+          context.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.1})`;
+          context.fillRect(Math.random() * 512, Math.random() * 512, 1, 1);
+        }
+
+        // Damp patches
+        for (let i = 0; i < 30; i++) {
+          context.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2 + 0.1})`;
+          context.beginPath();
+          context.arc(
+            Math.random() * 512,
+            Math.random() * 512,
+            Math.random() * 60 + 30,
+            0,
+            Math.PI * 2
+          );
+          context.fill();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(5, 5);
+        return texture;
+      }
+
+      function createCeilingTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+
+        // Off-white tile
+        context.fillStyle = "#c7c7c7";
+        context.fillRect(0, 0, 256, 256);
+
+        // Border
+        context.strokeStyle = "#888";
+        context.lineWidth = 8;
+        context.strokeRect(0, 0, 256, 256);
+
+        // Stains
+        for (let i = 0; i < 20; i++) {
+          context.fillStyle = `rgba(139, 69, 19, ${Math.random() * 0.1})`; // Brownish
+          context.beginPath();
+          context.arc(
+            Math.random() * 256,
+            Math.random() * 256,
+            Math.random() * 30 + 10,
+            0,
+            Math.PI * 2
+          );
+          context.fill();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        return texture;
+      }
+
+      // --- RE-ADDED: Torn Wallpaper Texture ---
+      function createTornWallpaperTexture(random) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+
+        context.clearRect(0, 0, 256, 256); // Start transparent
+
+        // Dark "under" wall color (brown wood/plaster)
+        const tearColor = "#5c3a21"; // --- Store color
+        context.fillStyle = tearColor;
+        context.beginPath();
+        // Random jagged shape for the tear
+        const startX = random() * 156 + 50; // Centered
+        const startY = random() * 156 + 50;
+        context.moveTo(startX, startY);
+        for (let j = 1; j < 10; j++) {
+          context.lineTo(
+            startX + (random() - 0.5) * 200, // Wider tears
+            startY + (random() - 0.5) * 200
+          );
+        }
+        context.closePath();
+        context.fill();
+
+        // Add "peeling" edge effect
+        // --- MODIFIED: Use the same color as the fill to remove the bright outline ---
+        context.strokeStyle = "rgba(92, 58, 33, 0.7)"; // Darker, semi-transparent wood
+        context.lineWidth = 4;
+        context.stroke();
+
+        // 2. Then, stroke with a "grainy" (low opacity) white on top
+        // To make it "grainy", we can draw it multiple times with offsets
+        context.strokeStyle = "rgba(240, 234, 218, 0.3)"; // Off-white "paper" color, low opacity
+        context.lineWidth = 2;
+
+        // Draw the line multiple times with small offsets to look "rough"
+        for (let i = 0; i < 3; i++) {
+          context.save();
+          context.translate((random() - 0.5) * 2, (random() - 0.5) * 2); // Jitter
+          context.stroke();
+          context.restore();
+        }
+
+        // 3. Finally, a thinner, more solid white line to define the "paper" edge
+        context.strokeStyle = "#f0eada"; // Solid off-white paper
+        context.lineWidth = 1;
+        context.stroke();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      // --- RE-ADDED: Graffiti Texture ---
+      function createGraffitiTexture(random, targetDirection = null) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+
+        context.clearRect(0, 0, 256, 256); // Start transparent
+        // Use a "spray paint" or "marker" style
+        context.strokeStyle = `rgba(10, 10, 10, ${random() * 0.2 + 0.7})`; // Very dark, opaque
+        context.lineWidth = random() * 6 + 6; // Thicker (6-12px)
+        context.lineCap = "round"; // Rounded ends
+
+        if (targetDirection) {
+          // --- Draw Arrows ---
+          const angle = Math.atan2(-targetDirection.z, targetDirection.x);
+          const arrowCount = random() * 5 + 3; // 3-7 arrows
+
+          for (let i = 0; i < arrowCount; i++) {
+            const startX = random() * 156 + 50; // Centered
+            const startY = random() * 156 + 50;
+            const arrowLength = 40 + random() * 30;
+
+            const jitterAngle = angle + (random() - 0.5) * 0.7; // +/- ~20 degrees
+            const endX = startX + Math.cos(jitterAngle) * arrowLength;
+            const endY = startY - Math.sin(jitterAngle) * arrowLength; // Canvas Y is inverted
+
+            context.beginPath();
+            context.moveTo(startX, startY);
+            context.lineTo(endX, endY);
+
+            // Arrowhead
+            const arrowSize = 20; // Bigger arrowhead
+            context.lineTo(
+              endX - arrowSize * Math.cos(jitterAngle - Math.PI / 6),
+              endY + arrowSize * Math.sin(jitterAngle - Math.PI / 6)
+            );
+            context.moveTo(endX, endY);
+            context.lineTo(
+              endX - arrowSize * Math.cos(jitterAngle + Math.PI / 6),
+              endY + arrowSize * Math.sin(jitterAngle + Math.PI / 6)
+            );
+            context.stroke();
+          }
+        } else {
+          // --- Draw Random Scrawls ---
+          for (let i = 0; i < random() * 3 + 1; i++) {
+            // 1-3 elements
+            context.beginPath();
+            const startX = random() * 200 + 28;
+            const startY = random() * 200 + 28;
+            context.moveTo(startX, startY);
+            context.quadraticCurveTo(
+              random() * 256,
+              random() * 256,
+              random() * 200 + 28,
+              random() * 200 + 28
+            );
+            context.stroke();
+          }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      init();
+
+      function init() {
+        // --- Scene Setup ---
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          100
+        );
+        camera.position.set(1, playerHeight, 1); // Adjusted spawn
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a10); // Dark, sickly yellow-gray fog
+        scene.fog = new THREE.Fog(0x1a1a10, 5, 25);
+
+        // --- Lighting ---
+        ambientLight = new THREE.AmbientLight(0x404040, 0.2); // Low ambient light
+        scene.add(ambientLight);
+
+        // Flashlight
+        flashlight = new THREE.SpotLight(
+          0xffffee,
+          0.0,
+          30,
+          Math.PI / 6,
+          0.3,
+          1.0
+        ); // Starts off
+        flashlight.position.set(0, 0, 0);
+        flashlight.target.position.set(0, 0, -1);
+        camera.add(flashlight);
+        camera.add(flashlight.target);
+        scene.add(camera); // Add camera (with flashlight) to scene
+
+        // --- Audio ---
+        audioListener = new THREE.AudioListener();
+        camera.add(audioListener);
+
+        // Generate fluorescent hum
+        const audioContext = audioListener.context;
+        // Check if audio context is running (requires user interaction)
+        if (audioContext.state === "suspended") {
+          console.log("AudioContext suspended. Waiting for user interaction.");
+        }
+        // Attempt to resume context on interaction if suspended
+        const resumeAudio = () => {
+          if (audioContext.state === "suspended") {
+            audioContext
+              .resume()
+              .then(() => {
+                console.log("AudioContext resumed!");
+                if (!humSound.isPlaying && controls.isLocked) {
+                  // Start hum if locked after resume
+                  humSound.play();
+                  humSound.setVolume(0.05);
+                }
+              })
+              .catch((e) => console.error("Error resuming AudioContext:", e));
+          }
+          // Remove listeners after first interaction
+          document.body.removeEventListener("click", resumeAudio);
+          document.body.removeEventListener("keydown", resumeAudio);
+        };
+        document.body.addEventListener("click", resumeAudio);
+        document.body.addEventListener("keydown", resumeAudio);
+
+        const stream = audioContext.createMediaStreamDestination();
+        const audioSource = audioContext.createMediaStreamSource(stream.stream); // Fix: Create source from stream
+        humSound = new THREE.Audio(audioListener);
+        humSound.setNodeSource(audioSource); // Use the correct AudioNode
+        humSound.setVolume(0.0); // Start silent
+
+        // 60Hz hum with harmonics
+        const oscillator1 = audioContext.createOscillator();
+        oscillator1.type = "sine";
+        oscillator1.frequency.setValueAtTime(60, audioContext.currentTime);
+        const gain1 = audioContext.createGain();
+        gain1.gain.setValueAtTime(0.3, audioContext.currentTime);
+
+        const oscillator2 = audioContext.createOscillator();
+        oscillator2.type = "sine";
+        oscillator2.frequency.setValueAtTime(120, audioContext.currentTime);
+        const gain2 = audioContext.createGain();
+        gain2.gain.setValueAtTime(0.1, audioContext.currentTime);
+
+        const oscillator3 = audioContext.createOscillator();
+        oscillator3.type = "sine";
+        oscillator3.frequency.setValueAtTime(180, audioContext.currentTime);
+        const gain3 = audioContext.createGain();
+        gain3.gain.setValueAtTime(0.05, audioContext.currentTime);
+
+        oscillator1.connect(gain1).connect(stream);
+        oscillator2.connect(gain2).connect(stream);
+        oscillator3.connect(gain3).connect(stream);
+
+        oscillator1.start();
+        oscillator2.start();
+        oscillator3.start();
+
+        // --- Initialize Materials ---
+        // --- RE-ADDED global wallpaperMaterial (as base) ---
+        wallpaperMaterial = new THREE.MeshStandardMaterial({
+          map: createWallpaperTexture(), // Just the base
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+
+        floorMaterial = new THREE.MeshStandardMaterial({
+          map: createCarpetTexture(),
+          roughness: 0.9,
+          metalness: 0.0,
+        });
+        // Dark version for pit bottoms
+        darkPitMaterial = floorMaterial.clone();
+        darkPitMaterial.color.lerp(new THREE.Color(0x000000), 0.7);
+
+        ceilingMaterial = new THREE.MeshStandardMaterial({
+          map: createCeilingTexture(),
+          roughness: 0.9,
+          metalness: 0.0,
+        });
+
+        // --- NEW: Roof Material ---
+        roofMaterial = new THREE.MeshStandardMaterial({
+          color: 0x222222,
+          roughness: 0.9,
+          side: THREE.DoubleSide,
+        });
+
+        // Use ceiling material for pit paths as well, slightly darker
+        pitPathMaterial = new THREE.MeshStandardMaterial({
+          map: createCeilingTexture(), // Reuse texture for variation
+          color: 0xaaaaaa, // Darker tint
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+
+        deskMaterial = new THREE.MeshStandardMaterial({
+          color: 0x5c3a21, // Dark wood color
+          roughness: 0.7,
+          metalness: 0.0,
+        });
+
+        chairMaterial = new THREE.MeshStandardMaterial({
+          color: 0x333333, // Dark grey/black
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+        puddleMaterial = new THREE.MeshStandardMaterial({
+          color: 0x1a1a1a, // Dark, murky
+          transparent: true,
+          opacity: 0.6,
+          roughness: 0.1, // Reflective
+          metalness: 0.0,
+          side: THREE.DoubleSide,
+        });
+        pipeMaterial = new THREE.MeshStandardMaterial({
+          color: 0xcccccc, // --- MODIFIED: Lighter gray for visibility
+          roughness: 0.6,
+          metalness: 0.2,
+        });
+        exitWallMaterial = new THREE.MeshStandardMaterial({
+          color: 0xd2c290, // Lighter, plainer yellow for exit room
+          roughness: 0.9,
+          metalness: 0.0,
+        });
+
+        // --- RE-ADDED Decal Materials (for cloning) ---
+        // --- MODIFIED: Changed to MeshStandardMaterial ---
+        graffitiMaterial = new THREE.MeshStandardMaterial({
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -100, // Push it "in front" of the wall
+          polygonOffsetUnits: -100,
+          roughness: 0.9, // Matte like spray paint
+          metalness: 0.0,
+        });
+
+        // --- MODIFIED: Changed to MeshStandardMaterial ---
+        tornWallpaperMaterial = new THREE.MeshStandardMaterial({
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -100, // Push it "in front" of the wall
+          polygonOffsetUnits: -100,
+          roughness: 0.8, // Match wall
+          metalness: 0.1, // Match wall
+        });
+
+        // Initial chunk generation (Only the starting chunk for faster load)
+        generateChunk(0, 0);
+        updateVisibleChunks(); // Ensure initial visibility is set
+
+        // --- Renderer ---
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- Controls ---
+        controls = new PointerLockControls(camera, renderer.domElement);
+
+        instructions.addEventListener("click", () => {
+          controls.lock();
+          // Ensure audio context resumes on first interaction if needed
+          resumeAudio();
+        });
+
+        controls.addEventListener("lock", () => {
+          instructions.style.display = "none";
+          blocker.style.display = "none";
+          hud.style.display = "block";
+          crosshair.style.display = "block";
+          hotbar[0].parentElement.style.display = "grid"; // Show hotbar
+          gameRunning = true;
+          if (!humSound.isPlaying && audioContext.state === "running") {
+            // Only play if context is running
+            humSound.play();
+          }
+          if (audioContext.state === "running") {
+            humSound.setVolume(0.05); // Fade in hum
+          }
+          prevTime = performance.now(); // Reset timer
+          animate(); // Start animation loop
+        });
+
+        controls.addEventListener("unlock", () => {
+          // Check if the game should actually pause or if the inventory caused the unlock
+          if (gameRunning && !inventoryOpen) {
+            blocker.style.display = "flex";
+            instructions.style.display = "block";
+            instructions.style.cursor = "default";
+            instructions.innerHTML = "<h1>Paused</h1><p>Click to resume</p>";
+            gameRunning = false; // Pause the game
+            humSound.setVolume(0.0);
+          } else if (!gameRunning && inventoryOpen) {
+            // If inventory is open, keep game logic paused but UI hidden
+            blocker.style.display = "none";
+            instructions.style.display = "none";
+          }
+          hud.style.display = "none";
+          crosshair.style.display = "none";
+          hotbar[0].parentElement.style.display = "none"; // Hide hotbar
+        });
+
+        // --- Event Listeners ---
+        document.addEventListener("keydown", onKeyDown);
+        document.addEventListener("keyup", onKeyUp);
+        document.addEventListener("mousedown", onMouseDown);
+        window.addEventListener("resize", onWindowResize);
+
+        // Inventory UI Listeners
+        inventoryGrid.addEventListener("click", (e) => {
+          if (e.target.classList.contains("inventory-slot")) {
+            const index = parseInt(e.target.dataset.index);
+            selectInventorySlot(index);
+          }
+        });
+
+        invUseButton.addEventListener("click", useInventoryItem);
+        invDropButton.addEventListener("click", dropInventoryItem);
+        invHotbarButtons.forEach((button, index) => {
+          button.addEventListener("click", () => moveToHotbar(index));
+        });
+
+        // Hotbar selection
+        selectHotbarSlot(0);
+
+        // Restart buttons
+        restartButtonDead.addEventListener("click", () =>
+          window.location.reload()
+        );
+        restartButtonWin.addEventListener("click", () =>
+          window.location.reload()
+        );
+
+        // --- NEW: Main Menu Button Listener ---
+        mainMenuButtonWin.addEventListener("click", () => {
+          try {
+            // Assume the main menu is at the root "index.html"
+            window.location.href = "index.html";
+          } catch (e) {
+            console.error("Failed to load main menu.", e);
+            // Fallback to reload if redirect fails
+            window.location.reload();
+          }
+        });
+
+        // Populate inventory grid
+        for (let i = 0; i < 9; i++) {
+          const slot = document.createElement("div");
+          slot.classList.add("inventory-slot");
+          slot.dataset.index = i;
+          slot.innerHTML = `[Empty]`;
+          inventoryGrid.appendChild(slot);
+        }
+
+        // --- NEW: Start the async chunk generation loop ---
+        processChunkQueue();
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function onKeyDown(event) {
+        // Allow 'E' even when gameRunning is false IF inventory is open
+        if (
+          !gameRunning &&
+          event.code !== "Escape" &&
+          !(event.code === "KeyE" && inventoryOpen)
+        )
+          return;
+
+        switch (event.code) {
+          case "KeyW":
+            moveForward = true;
+            break;
+          case "KeyA":
+            moveLeft = true;
+            break;
+          case "KeyS":
+            moveBackward = true;
+            break;
+          case "KeyD":
+            moveRight = true;
+            break;
+          case "Space":
+            if (canJump) playerVelocity.y += playerJumpHeight;
+            canJump = false;
+            break;
+          case "ControlLeft":
+            isCrouching = true;
+            break; // Height change is handled in updatePlayer
+          case "ShiftLeft":
+            isSprinting = true;
+            break;
+          case "KeyF":
+            // Use flashlight from inventory/hotbar if available
+            if (
+              findItemInInventory("flashlight") !== -1 ||
+              findItemInHotbar("flashlight") !== -1
+            ) {
+              toggleFlashlight();
+            }
+            break;
+          case "KeyE":
+            event.preventDefault(); // Prevent default browser behavior (e.g., opening search)
+            toggleInventory();
+            break;
+          case "KeyQ":
+            useHotbarItem();
+            break;
+          case "Digit1":
+            selectHotbarSlot(0);
+            break;
+          case "Digit2":
+            selectHotbarSlot(1);
+            break;
+          case "Digit3":
+            selectHotbarSlot(2);
+            break;
+        }
+      }
+
+      function onKeyUp(event) {
+        switch (event.code) {
+          case "KeyW":
+            moveForward = false;
+            break;
+          case "KeyA":
+            moveLeft = false;
+            break;
+          case "KeyS":
+            moveBackward = false;
+            break;
+          case "KeyD":
+            moveRight = false;
+            break;
+          case "ControlLeft":
+            isCrouching = false;
+            break; // Height change is handled in updatePlayer
+          case "ShiftLeft":
+            isSprinting = false;
+            break;
+        }
+      }
+
+      function onMouseDown(event) {
+        if (!gameRunning || inventoryOpen) return;
+
+        // Check for item pickup
+        const raycaster = new THREE.Raycaster(
+          camera.position,
+          camera.getWorldDirection(new THREE.Vector3())
+        );
+        const intersects = raycaster.intersectObjects(interactableItems);
+
+        if (intersects.length > 0 && intersects[0].distance < 3) {
+          const itemObject = intersects[0].object;
+          if (itemObject.userData.itemName) {
+            pickupItem(itemObject);
+          }
+        }
+      }
+
+      // --- Maze Generation ---
+      function generateChunk(chunkX, chunkZ) {
+        const chunkKey = `${chunkX},${chunkZ}`;
+        if (generatedChunks.has(chunkKey)) return;
+
+        console.log("Generating chunk:", chunkKey); // Debug log
+
+        const chunkGroup = new THREE.Group();
+        chunkGroup.position.set(chunkX * CHUNK_SIZE, 0, chunkZ * CHUNK_SIZE);
+        // NEW: Add array to track disposable items for this chunk
+        chunkGroup.userData.disposables = [];
+        scene.add(chunkGroup);
+        generatedChunks.set(chunkKey, chunkGroup);
+
+        const seed = chunkX * 1000 + chunkZ; // Use chunk coords for seed
+        const random = createSeededRandom(seed); // Seeded random for this chunk's layout/items/props
+
+        // --- NEW: Add a "structural roof" above the ceiling tiles ---
+        // This is the dark void you see through missing tiles.
+        const roofGeometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE);
+        roofGeometry.rotateX(-Math.PI / 2); // Lay it flat
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        // Place it 1 unit ABOVE the ceiling tiles
+        roof.position.set(CHUNK_SIZE / 2, WALL_HEIGHT + 1.0, CHUNK_SIZE / 2);
+        roof.receiveShadow = true; // It can receive shadows from pipes, etc.
+        chunkGroup.add(roof);
+        // No collision for the roof, it's just visual
+
+        // --- Special Room Logic ---
+        const isStartChunk = chunkX === 0 && chunkZ === 0;
+        let isExitChunk = false; // Default to false
+        const shouldBePitfall =
+          globalRandom() < PITFALL_PROBABILITY && !isStartChunk; // Don't allow pitfall at start or if exit spawns
+
+        // Check for Exit Spawn possibility
+        const distanceFromSpawnSq = chunkX * chunkX + chunkZ * chunkZ;
+        if (
+          !exitChunkCoords && // No exit currently spawned
+          !shouldBePitfall && // Cannot be pitfall
+          !isStartChunk && // Cannot be start
+          distanceFromSpawnSq > MIN_EXIT_DISTANCE_SQ && // Must be far enough
+          globalRandom() < EXIT_SPAWN_PROBABILITY // Random chance passes
+        ) {
+          isExitChunk = true; // This chunk becomes the exit
+          exitChunkCoords = { x: chunkX, z: chunkZ };
+        }
+
+        // --- NEW: Lights Out Check ---
+        const isLightsOut =
+          random() < LIGHTS_OUT_PROBABILITY &&
+          !isStartChunk &&
+          !isExitChunk &&
+          !shouldBePitfall;
+        chunkGroup.userData.isLightsOut = isLightsOut;
+        if (isLightsOut) {
+          console.log(">>> Generating Lights Out chunk for:", chunkKey);
+        }
+        // --- End Lights Out Check ---
+
+        if (shouldBePitfall && !isExitChunk) {
+          // Ensure pitfall doesn't overwrite exit
+          console.log(">>> Generating Pitfall room for chunk:", chunkKey); // More visible log
+          // --- MODIFIED: Pass global wallpaperMaterial ---
+          generatePitfallRoom(chunkGroup, random, wallpaperMaterial);
+          chunkGroup.userData.isPitfallChunk = true; // Flag for debugging/future use
+          return; // Pitfall room generation replaces standard generation
+        }
+        if (isExitChunk) {
+          console.log(">>> Generating Exit room for chunk:", chunkKey); // More visible log
+          generateExitRoom(chunkGroup, random);
+          chunkGroup.userData.isExitChunk = true; // Flag for debugging/despawning
+          // Exit room still needs floor/ceiling base below
+        }
+
+        // --- Floor ---
+        // Floor is generated *unless* it's a pitfall room
+        if (!shouldBePitfall) {
+          const floorGeometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE);
+          floorGeometry.rotateX(-Math.PI / 2);
+          const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+          floor.position.set(CHUNK_SIZE / 2, 0, CHUNK_SIZE / 2);
+          floor.receiveShadow = true;
+          chunkGroup.add(floor);
+          objects.push(floor);
+        }
+
+        // Add Puddles (if not exit or pitfall)
+        if (!isExitChunk && !shouldBePitfall) {
+          for (let i = 0; i < 5; i++) {
+            // Add a few puddles
+            if (random() < 0.2) {
+              // Chance per puddle
+              const puddleGeo = new THREE.CircleGeometry(
+                random() * 0.8 + 0.3,
+                16
+              ); // Random size
+              puddleGeo.rotateX(-Math.PI / 2);
+              const puddle = new THREE.Mesh(puddleGeo, puddleMaterial);
+              // Place near walls (slightly offset)
+              const edge = Math.floor(random() * 4);
+              let px, pz;
+              const offset = 0.5; // Distance from wall
+              if (edge === 0) {
+                px = offset;
+                pz = random() * CHUNK_SIZE;
+              } // West
+              else if (edge === 1) {
+                px = CHUNK_SIZE - offset;
+                pz = random() * CHUNK_SIZE;
+              } // East
+              else if (edge === 2) {
+                pz = offset;
+                px = random() * CHUNK_SIZE;
+              } // South
+              else {
+                pz = CHUNK_SIZE - offset;
+                px = random() * CHUNK_SIZE;
+              } // South
+              puddle.position.set(px, 0.01, pz); // Slightly above floor
+              chunkGroup.add(puddle);
+              // Puddles don't need collision
+            }
+          }
+        }
+
+        // --- Ceiling ---
+        // Ceiling is generated *unless* it's a pitfall room (pitfalls have lights but no tiles)
+        if (!shouldBePitfall) {
+          const ceiling = new THREE.Group();
+          chunkGroup.add(ceiling);
+
+          for (let x = 0; x < CHUNK_SIZE; x += TILE_SIZE) {
+            for (let z = 0; z < CHUNK_SIZE; z += TILE_SIZE) {
+              // Only spawn lights/tiles if NOT the exit room center (to avoid clipping door)
+              const isExitCenterArea =
+                isExitChunk &&
+                x > CHUNK_SIZE / 2 - 2 &&
+                x < CHUNK_SIZE / 2 + 1 &&
+                z < 3;
+              if (!isExitCenterArea) {
+                const missingTile = random() < MISSING_TILE_PROBABILITY; // --- MODIFIED: Use variable
+                if (missingTile) {
+                  // Chance to add pipe in empty space
+                  if (random() < CEILING_JUNK_DENSITY) {
+                    // --- MODIFIED: Use variable
+                    const pipeLength = TILE_SIZE * (random() * 2 + 1); // Pipe spans 1-3 tile lengths
+                    const pipeGeo = new THREE.CylinderGeometry(
+                      0.05,
+                      0.05,
+                      pipeLength,
+                      8
+                    );
+                    const pipe = new THREE.Mesh(pipeGeo, pipeMaterial);
+                    pipe.position.set(
+                      x + TILE_SIZE / 2,
+                      WALL_HEIGHT + 0.3, // Position is in the new "void"
+                      z + TILE_SIZE / 2
+                    );
+                    if (random() < 0.5) pipe.rotateY(Math.PI / 2); // Random orientation
+                    ceiling.add(pipe);
+                  }
+                  continue; // Skip adding the tile itself
+                }
+
+                // Add Tile
+                const tileGeo = new THREE.BoxGeometry(
+                  TILE_SIZE,
+                  0.1,
+                  TILE_SIZE
+                );
+                const tile = new THREE.Mesh(tileGeo, ceilingMaterial);
+                tile.position.set(
+                  x + TILE_SIZE / 2,
+                  WALL_HEIGHT,
+                  z + TILE_SIZE / 2
+                );
+                tile.receiveShadow = true;
+                ceiling.add(tile);
+
+                // Add Light (Reduced chance)
+                if (random() < 0.015) {
+                  createFluorescentLight(
+                    ceiling,
+                    x + TILE_SIZE / 2,
+                    z + TILE_SIZE / 2
+                  );
+                }
+              } else if (isExitChunk) {
+                // Add ceiling tiles *around* the exit door area in the exit chunk
+                if (x < CHUNK_SIZE / 2 - 1 || x > CHUNK_SIZE / 2 || z > 1) {
+                  const tileGeo = new THREE.BoxGeometry(
+                    TILE_SIZE,
+                    0.1,
+                    TILE_SIZE
+                  );
+                  const tile = new THREE.Mesh(tileGeo, ceilingMaterial);
+                  tile.position.set(
+                    x + TILE_SIZE / 2,
+                    WALL_HEIGHT,
+                    z + TILE_SIZE / 2
+                  );
+                  tile.receiveShadow = true;
+                  ceiling.add(tile);
+                }
+              }
+            }
+          }
+        }
+
+        // --- Walls (Maze Algorithm + Connectivity + Graffiti) ---
+        // Wall generation happens *unless* it's a pitfall room
+        if (!shouldBePitfall) {
+          if (!isExitChunk) {
+            // Don't generate internal walls for the open exit room
+            const gridW = 5;
+            const gridH = 5;
+            const cellSize = CHUNK_SIZE / gridW;
+            const wallMeshesMap = new Map(); // Store potential INTERNAL walls
+
+            // Populate wallMeshesMap with ALL potential internal walls
+            for (let z = 0; z < gridH; z++) {
+              for (let x = 0; x < gridW; x++) {
+                if (x < gridW - 1) wallMeshesMap.set(`${x},${z},x`, true);
+                if (z < gridH - 1) wallMeshesMap.set(`${x},${z},z`, true);
+              }
+            }
+
+            // --- Recursive Backtracker Carving ---
+            const visited = new Set();
+            const stackCarve = [{ x: 0, z: 0 }];
+            visited.add("0,0");
+            let internalPathCells = new Set(); // Keep track of cells part of the path
+            internalPathCells.add("0,0");
+
+            while (stackCarve.length > 0) {
+              const current = stackCarve[stackCarve.length - 1];
+              const { x, z } = current;
+
+              const directions = [
+                [1, 0, "x"],
+                [-1, 0, "x"],
+                [0, 1, "z"],
+                [0, -1, "z"],
+              ];
+              directions.sort(() => random() - 0.5);
+
+              let foundNeighbor = false;
+              for (const [dx, dz, dir] of directions) {
+                const nx = x + dx;
+                const nz = z + dz;
+
+                if (
+                  nx >= 0 &&
+                  nx < gridW &&
+                  nz >= 0 &&
+                  nz < gridH &&
+                  !visited.has(`${nx},${nz}`)
+                ) {
+                  visited.add(`${nx},${nz}`);
+                  internalPathCells.add(`${nx},${nz}`); // Add new cell to path
+                  stackCarve.push({ x: nx, z: nz });
+
+                  let wallKeyToRemove;
+                  if (dir === "x")
+                    wallKeyToRemove = `${Math.min(x, nx)},${z},x`;
+                  else wallKeyToRemove = `${x},${Math.min(z, nz)},z`;
+
+                  wallMeshesMap.delete(wallKeyToRemove); // Remove wall from map
+
+                  foundNeighbor = true;
+                  break;
+                }
+              }
+              if (!foundNeighbor) stackCarve.pop();
+            }
+
+            // --- Add Actual Wall Meshes AFTER Carving ---
+            // Add remaining INTERNAL walls + Graffiti
+            wallMeshesMap.forEach((_, key) => {
+              const [xStr, zStr, dir] = key.split(",");
+              const x = parseInt(xStr);
+              const z = parseInt(zStr);
+              let wall;
+              let graffitiOffset = 0.05; // Offset graffiti 5cm
+              let graffitiSize = [cellSize * 0.8, WALL_HEIGHT * 0.8]; // Size relative to wall
+
+              if (dir === "x") {
+                wall = createWall(
+                  WALL_THICKNESS,
+                  WALL_HEIGHT,
+                  cellSize,
+                  wallpaperMaterial // --- MODIFIED (use global)
+                );
+                wall.position.set(
+                  (x + 1) * cellSize,
+                  WALL_HEIGHT / 2,
+                  z * cellSize + cellSize / 2
+                );
+                // Graffiti on Z-facing sides
+                // Face 1 (Negative Z normal)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x - graffitiOffset, // Offset for decal
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, -Math.PI / 2, 0), // Rotate plane to face -X
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+                // Face 2 (Positive Z normal)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x + graffitiOffset, // Offset for decal
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, Math.PI / 2, 0), // Rotate plane to face +X
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                // dir === 'z'
+                wall = createWall(
+                  cellSize,
+                  WALL_HEIGHT,
+                  WALL_THICKNESS,
+                  wallpaperMaterial // --- MODIFIED (use global)
+                );
+                wall.position.set(
+                  x * cellSize + cellSize / 2,
+                  WALL_HEIGHT / 2,
+                  (z + 1) * cellSize
+                );
+                // Graffiti on X-facing sides
+                // Face 1 (Negative X normal)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z - graffitiOffset
+                  ),
+                  new THREE.Vector3(0, 0, 0), // Rotate plane to face +Z
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+                // Face 2 (Positive X normal)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z + graffitiOffset
+                  ),
+                  new THREE.Vector3(0, Math.PI, 0), // Rotate plane to face -Z
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              }
+              chunkGroup.add(wall);
+              objects.push(wall);
+            });
+
+            // --- Add OUTER boundary walls (segmented) + Force Opening + Graffiti ---
+            const openings = { north: 0, south: 0, west: 0, east: 0 };
+            let graffitiOffset = 0.05; // (WAS 0.02)
+            let graffitiSize = [cellSize * 0.8, WALL_HEIGHT * 0.8];
+            // North boundary (z=0)
+            for (let x = 0; x < gridW; x++) {
+              const pathTouchesBoundary = internalPathCells.has(`${x},0`);
+              if (!pathTouchesBoundary) {
+                // Add wall only if path doesn't reach here
+                const wall = createWall(
+                  cellSize,
+                  WALL_HEIGHT,
+                  WALL_THICKNESS,
+                  wallpaperMaterial // --- MODIFIED (use global)
+                );
+                wall.position.set(
+                  x * cellSize + cellSize / 2,
+                  WALL_HEIGHT / 2,
+                  0
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                // Graffiti on inner side (faces -Z)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z + graffitiOffset
+                  ),
+                  new THREE.Vector3(0, Math.PI, 0), // Rotate plane to face -Z
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.north++; // Path reaches boundary = opening
+              }
+            }
+            // South boundary (z=CHUNK_SIZE)
+            for (let x = 0; x < gridW; x++) {
+              const pathTouchesBoundary = internalPathCells.has(
+                `${x},${gridH - 1}`
+              );
+              if (!pathTouchesBoundary) {
+                const wall = createWall(
+                  cellSize,
+                  WALL_HEIGHT,
+                  WALL_THICKNESS,
+                  wallpaperMaterial // --- MODIFIED (use global)
+                );
+                wall.position.set(
+                  x * cellSize + cellSize / 2,
+                  WALL_HEIGHT / 2,
+                  CHUNK_SIZE
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                // Graffiti on inner side (faces +Z)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x,
+                    wall.position.y,
+                    wall.position.z - graffitiOffset
+                  ),
+                  new THREE.Vector3(0, 0, 0), // Rotate plane to face +Z
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.south++;
+              }
+            }
+            // West boundary (x=0)
+            for (let z = 0; z < gridH; z++) {
+              const pathTouchesBoundary = internalPathCells.has(`0,${z}`);
+              if (!pathTouchesBoundary) {
+                const wall = createWall(
+                  WALL_THICKNESS,
+                  WALL_HEIGHT,
+                  cellSize,
+                  wallpaperMaterial // --- MODIFIED (use global)
+                );
+                wall.position.set(
+                  0,
+                  WALL_HEIGHT / 2,
+                  z * cellSize + cellSize / 2
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                // Graffiti on inner side (faces +X)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x + graffitiOffset,
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, Math.PI / 2, 0), // Rotate plane to face +X
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.west++;
+              }
+            }
+            // East boundary (x=CHUNK_SIZE)
+            for (let z = 0; z < gridH; z++) {
+              const pathTouchesBoundary = internalPathCells.has(
+                `${gridW - 1},${z}`
+              );
+              if (!pathTouchesBoundary) {
+                const wall = createWall(
+                  WALL_THICKNESS,
+                  WALL_HEIGHT,
+                  cellSize,
+                  wallpaperMaterial // --- MODIFIED (use global)
+                );
+                wall.position.set(
+                  CHUNK_SIZE,
+                  WALL_HEIGHT / 2,
+                  z * cellSize + cellSize / 2
+                );
+                chunkGroup.add(wall);
+                objects.push(wall);
+                // Graffiti on inner side (faces -X)
+                addWallDecal(
+                  chunkGroup,
+                  wall,
+                  random,
+                  new THREE.Vector3(
+                    wall.position.x - graffitiOffset,
+                    wall.position.y,
+                    wall.position.z
+                  ),
+                  new THREE.Vector3(0, -Math.PI / 2, 0), // Rotate plane to face -X
+                  graffitiSize,
+                  chunkX,
+                  chunkZ
+                );
+              } else {
+                openings.east++;
+              }
+            }
+
+            // --- Force opening if needed (redundant check, but safe) ---
+            if (openings.north === 0)
+              forceOpening(chunkGroup, "north", gridW, cellSize, random);
+            if (openings.south === 0)
+              forceOpening(chunkGroup, "south", gridW, cellSize, random);
+            if (openings.west === 0)
+              forceOpening(chunkGroup, "west", gridH, cellSize, random);
+            if (openings.east === 0)
+              forceOpening(chunkGroup, "east", gridH, cellSize, random);
+
+            // --- Add Props ---
+            internalPathCells.forEach((cellKey) => {
+              const [xStr, zStr] = cellKey.split(",");
+              const x = parseInt(xStr);
+              const z = parseInt(zStr);
+              const cellCenterX = x * cellSize + cellSize / 2;
+              const cellCenterZ = z * cellSize + cellSize / 2;
+
+              if (random() < 0.1) {
+                // 10% chance per cell to add a prop group
+                if (random() < 0.5) {
+                  // Desk
+                  const desk = createDesk();
+                  desk.position.set(cellCenterX, 0, cellCenterZ);
+                  desk.rotateY(random() * Math.PI * 2); // Random rotation
+                  chunkGroup.add(desk);
+                  objects.push(desk); // Add for collision
+                } else {
+                  // Chair
+                  const chair = createChair();
+                  chair.position.set(cellCenterX, 0, cellCenterZ);
+                  chair.rotateY(random() * Math.PI * 2); // Random rotation
+                  chunkGroup.add(chair);
+                  objects.push(chair); // Add for collision
+                }
+              }
+            });
+          } else {
+            // If it IS the exit chunk, add solid boundary walls EXCEPT for the door opening
+            // Use exitWallMaterial here
+            const northWallLeft = createWall(
+              CHUNK_SIZE / 2 - 0.75,
+              WALL_HEIGHT,
+              WALL_THICKNESS,
+              exitWallMaterial
+            );
+            northWallLeft.position.set(
+              CHUNK_SIZE / 4 - 0.375,
+              WALL_HEIGHT / 2,
+              0
+            );
+            chunkGroup.add(northWallLeft);
+            objects.push(northWallLeft);
+            const northWallRight = createWall(
+              CHUNK_SIZE / 2 - 0.75,
+              WALL_HEIGHT,
+              WALL_THICKNESS,
+              exitWallMaterial
+            );
+            northWallRight.position.set(
+              (CHUNK_SIZE * 3) / 4 + 0.375,
+              WALL_HEIGHT / 2,
+              0
+            );
+            chunkGroup.add(northWallRight);
+            objects.push(northWallRight);
+
+            const southWall = createWall(
+              CHUNK_SIZE,
+              WALL_HEIGHT,
+              WALL_THICKNESS,
+              exitWallMaterial
+            );
+            southWall.position.set(CHUNK_SIZE / 2, WALL_HEIGHT / 2, CHUNK_SIZE);
+            chunkGroup.add(southWall);
+            objects.push(southWall);
+            const westWall = createWall(
+              WALL_THICKNESS,
+              WALL_HEIGHT,
+              CHUNK_SIZE,
+              exitWallMaterial
+            );
+            westWall.position.set(0, WALL_HEIGHT / 2, CHUNK_SIZE / 2);
+            chunkGroup.add(westWall);
+            objects.push(westWall);
+            const eastWall = createWall(
+              WALL_THICKNESS,
+              WALL_HEIGHT,
+              CHUNK_SIZE,
+              exitWallMaterial
+            );
+            eastWall.position.set(CHUNK_SIZE, WALL_HEIGHT / 2, CHUNK_SIZE / 2);
+            chunkGroup.add(eastWall);
+            objects.push(eastWall);
+          }
+        }
+
+        // --- Add Items ---
+        // Don't spawn items in the exit room or pitfall rooms
+        if (!isExitChunk && !shouldBePitfall) {
+          if (random() < 0.3) {
+            // Increased chance
+            spawnItem(
+              "flashlight",
+              new THREE.Vector3(
+                random() * (CHUNK_SIZE - 4) + 2, // Spawn away from walls/center
+                0.1, // Slightly above floor
+                random() * (CHUNK_SIZE - 4) + 2
+              ),
+              chunkGroup
+            );
+          }
+          if (random() < 0.5) {
+            // Increased chance
+            spawnItem(
+              "almond_water",
+              new THREE.Vector3(
+                random() * (CHUNK_SIZE - 4) + 2,
+                0.1, // Slightly above floor
+                random() * (CHUNK_SIZE - 4) + 2
+              ),
+              chunkGroup
+            );
+          }
+        }
+      }
+
+      // --- RE-ADDED: Helper function to add decals (Graffiti/Torn Paper) ---
+      function addWallDecal(
+        chunkGroup,
+        wall,
+        random,
+        position,
+        rotation,
+        size,
+        chunkX,
+        chunkZ
+      ) {
+        let isNearExit = false;
+
+        // 1. Check for Exit Proximity
+        if (
+          exitChunkCoords &&
+          (chunkX !== exitChunkCoords.x || chunkZ !== exitChunkCoords.z)
+        ) {
+          const distSq =
+            Math.pow(chunkX - exitChunkCoords.x, 2) +
+            Math.pow(chunkZ - exitChunkCoords.z, 2);
+          if (distSq < 9) {
+            // Within 2-chunk radius
+            isNearExit = true;
+          }
+        }
+
+        // 2. Handle Decal Spawning
+        if (isNearExit) {
+          // --- Near Exit: ONLY roll for Guide Arrows ---
+          if (random() < GUIDE_ARROW_PROBABILITY) {
+            // Calculate target vector
+            const chunkCenter = new THREE.Vector2(
+              chunkX * CHUNK_SIZE + CHUNK_SIZE / 2,
+              chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2
+            );
+            const exitCenter = new THREE.Vector2(
+              exitChunkCoords.x * CHUNK_SIZE + CHUNK_SIZE / 2,
+              exitChunkCoords.z * CHUNK_SIZE + CHUNK_SIZE / 2
+            );
+            const targetDir = exitCenter.sub(chunkCenter).normalize();
+
+            const decalGeo = new THREE.PlaneGeometry(size[0], size[1]); // Use standard size for graffiti
+            const decalMat = graffitiMaterial.clone();
+            const textureToUse = createGraffitiTexture(random, targetDir); // Pass targetDir
+            decalMat.map = textureToUse;
+            decalMat.needsUpdate = true;
+
+            chunkGroup.userData.disposables.push(textureToUse);
+            chunkGroup.userData.disposables.push(decalMat);
+
+            const decalPlane = new THREE.Mesh(decalGeo, decalMat);
+            decalPlane.position.copy(position);
+            decalPlane.rotation.set(rotation.x, rotation.y, rotation.z);
+            chunkGroup.add(decalPlane);
+          }
+        } else {
+          // --- Not Near Exit: Roll for Torn Paper AND Random Graffiti separately ---
+
+          // Roll for Torn Paper
+          if (random() < RANDOM_TORN_WALLPAPER_PROBABILITY) {
+            const decalWidth =
+              random() * (TORN_PAPER_MAX_WIDTH - TORN_PAPER_MIN_WIDTH) +
+              TORN_PAPER_MIN_WIDTH;
+            const decalHeight =
+              random() * (TORN_PAPER_MAX_HEIGHT - TORN_PAPER_MIN_HEIGHT) +
+              TORN_PAPER_MIN_HEIGHT;
+            const decalGeo = new THREE.PlaneGeometry(decalWidth, decalHeight);
+
+            const decalMat = tornWallpaperMaterial.clone();
+            const textureToUse = createTornWallpaperTexture(random);
+            decalMat.map = textureToUse;
+            decalMat.needsUpdate = true;
+
+            chunkGroup.userData.disposables.push(textureToUse);
+            chunkGroup.userData.disposables.push(decalMat);
+
+            const decalPlane = new THREE.Mesh(decalGeo, decalMat);
+            decalPlane.position.copy(position);
+            decalPlane.rotation.set(rotation.x, rotation.y, rotation.z);
+            chunkGroup.add(decalPlane);
+          }
+
+          // Roll for Random Graffiti
+          if (random() < RANDOM_GRAFFITI_PROBABILITY) {
+            const decalGeo = new THREE.PlaneGeometry(size[0], size[1]); // Use standard size for graffiti
+            const decalMat = graffitiMaterial.clone();
+            const textureToUse = createGraffitiTexture(random, null); // null = random scrawl
+            decalMat.map = textureToUse;
+            decalMat.needsUpdate = true;
+
+            chunkGroup.userData.disposables.push(textureToUse);
+            chunkGroup.userData.disposables.push(decalMat);
+
+            const decalPlane = new THREE.Mesh(decalGeo, decalMat);
+            decalPlane.position.copy(position);
+            decalPlane.rotation.set(rotation.x, rotation.y, rotation.z);
+            chunkGroup.add(decalPlane);
+          }
+        }
+      }
+
+      // Helper function to force an opening if a side is blocked
+      function forceOpening(chunkGroup, side, gridSize, cellSize, random) {
+        console.warn(
+          `CHUNK ${chunkGroup.position.x / CHUNK_SIZE},${
+            chunkGroup.position.z / CHUNK_SIZE
+          }: Forcing opening on ${side} side.`
+        );
+        const openingIndex = Math.floor(random() * gridSize);
+        let wallToRemovePos;
+        let wallToRemoveSize;
+
+        if (side === "north") {
+          wallToRemovePos = new THREE.Vector3(
+            openingIndex * cellSize + cellSize / 2,
+            WALL_HEIGHT / 2,
+            0
+          );
+          wallToRemoveSize = new THREE.Vector3(
+            cellSize,
+            WALL_HEIGHT,
+            WALL_THICKNESS
+          );
+        } else if (side === "south") {
+          wallToRemovePos = new THREE.Vector3(
+            openingIndex * cellSize + cellSize / 2,
+            WALL_HEIGHT / 2,
+            CHUNK_SIZE
+          );
+          wallToRemoveSize = new THREE.Vector3(
+            cellSize,
+            WALL_HEIGHT,
+            WALL_THICKNESS
+          );
+        } else if (side === "west") {
+          wallToRemovePos = new THREE.Vector3(
+            0,
+            WALL_HEIGHT / 2,
+            openingIndex * cellSize + cellSize / 2
+          );
+          wallToRemoveSize = new THREE.Vector3(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            cellSize
+          );
+        } else {
+          // east
+          wallToRemovePos = new THREE.Vector3(
+            CHUNK_SIZE,
+            WALL_HEIGHT / 2,
+            openingIndex * cellSize + cellSize / 2
+          );
+          wallToRemoveSize = new THREE.Vector3(
+            WALL_THICKNESS,
+            WALL_HEIGHT,
+            cellSize
+          );
+        }
+
+        // Find and remove the wall segment at that position
+        let wallToRemove = null;
+        for (let i = objects.length - 1; i >= 0; i--) {
+          const obj = objects[i];
+          if (
+            obj.parent === chunkGroup &&
+            obj.geometry instanceof THREE.BoxGeometry
+          ) {
+            // Check position and size match (approximately)
+            if (
+              obj.position.distanceTo(wallToRemovePos) < 0.1 &&
+              Math.abs(obj.geometry.parameters.width - wallToRemoveSize.x) <
+                0.1 &&
+              Math.abs(obj.geometry.parameters.height - wallToRemoveSize.y) <
+                0.1 &&
+              Math.abs(obj.geometry.parameters.depth - wallToRemoveSize.z) < 0.1
+            ) {
+              wallToRemove = obj;
+              objects.splice(i, 1); // Remove from collision array
+              break;
+            }
+          }
+        }
+        if (wallToRemove) {
+          chunkGroup.remove(wallToRemove);
+        } else {
+          console.error(
+            `CHUNK ${chunkGroup.position.x / CHUNK_SIZE},${
+              chunkGroup.position.z / CHUNK_SIZE
+            }: Could not find wall to remove for forced ${side} opening.`
+          );
+        }
+      }
+
+      // --- MODIFIED Pitfall Room Generation ---
+      function generatePitfallRoom(chunkGroup, random, chunkWallpaperMaterial) {
+        // Added chunkWallpaperMaterial
+
+        // --- NEW: Add a "structural roof" to this chunk ---
+        const roofGeometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE);
+        roofGeometry.rotateX(-Math.PI / 2); // Lay it flat
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.position.set(CHUNK_SIZE / 2, WALL_HEIGHT + 1.0, CHUNK_SIZE / 2);
+        roof.receiveShadow = true;
+        chunkGroup.add(roof);
+
+        const pathCollisions = []; // Temporary array for path collision objects
+        const pathVisuals = new THREE.Group(); // Group for visual paths
+        chunkGroup.add(pathVisuals);
+
+        const pathY = -PIT_PATH_HEIGHT / 2; // Position paths so top is at y=0
+
+        // Create horizontal paths (beams) - ADD TO COLLISIONS
+        for (let i = 0; i < PIT_WALL_COUNT; i++) {
+          const z =
+            i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE + PIT_PATH_WIDTH / 2; // Center path Z
+          const pathGeo = new THREE.BoxGeometry(
+            CHUNK_SIZE,
+            PIT_PATH_HEIGHT,
+            PIT_PATH_WIDTH
+          );
+          const path = new THREE.Mesh(pathGeo, pitPathMaterial);
+          path.position.set(CHUNK_SIZE / 2, pathY, z);
+          path.receiveShadow = true;
+          path.castShadow = true;
+          path.geometry.computeBoundingBox(); // Compute BB for collision
+          pathVisuals.add(path); // Add visual
+          objects.push(path); // *** Add individual path to collision objects ***
+          pathCollisions.push(path); // Track locally
+        }
+        // Create vertical paths (beams) - ADD TO COLLISIONS
+        for (let i = 0; i < PIT_WALL_COUNT; i++) {
+          const x =
+            i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE + PIT_PATH_WIDTH / 2; // Center path X
+          const pathGeo = new THREE.BoxGeometry(
+            PIT_PATH_WIDTH,
+            PIT_PATH_HEIGHT,
+            CHUNK_SIZE
+          );
+          const path = new THREE.Mesh(pathGeo, pitPathMaterial);
+          path.position.set(x, pathY, CHUNK_SIZE / 2);
+          path.receiveShadow = true;
+          path.castShadow = true;
+          path.geometry.computeBoundingBox(); // Compute BB for collision
+          pathVisuals.add(path); // Add visual
+          objects.push(path); // *** Add individual path to collision objects ***
+          pathCollisions.push(path); // Track locally
+        }
+
+        // --- Visual Pits (No Collision) ---
+        const pitGroup = new THREE.Group(); // Group for visual pits
+        chunkGroup.add(pitGroup);
+        const darkWallMaterial = chunkWallpaperMaterial.clone(); // Use wallpaper for pit walls
+        darkWallMaterial.color.lerp(new THREE.Color(0x000000), 0.5); // Make it darker
+        darkWallMaterial.side = THREE.BackSide; // Make texture visible from inside pit
+        // Add to disposables
+        chunkGroup.userData.disposables.push(darkWallMaterial);
+
+        for (let x = 0; x < PIT_GRID_SIZE; x++) {
+          for (let z = 0; z < PIT_GRID_SIZE; z++) {
+            const pitCenterX = x * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE / 2;
+            const pitCenterZ = z * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE / 2;
+
+            // Pit Floor
+            const pitFloorGeo = new THREE.PlaneGeometry(PIT_SIZE, PIT_SIZE);
+            pitFloorGeo.rotateX(-Math.PI / 2);
+            const pitFloor = new THREE.Mesh(pitFloorGeo, darkPitMaterial); // Use dark material
+            pitFloor.position.set(pitCenterX, -PIT_DEPTH, pitCenterZ);
+            pitFloor.receiveShadow = true;
+            pitGroup.add(pitFloor);
+
+            // Pit Walls (Visual Only)
+            const pitWallHeight = PIT_DEPTH;
+            const pitWallY = -pitWallHeight / 2;
+            // North Wall
+            const wallN = createWall(
+              PIT_SIZE,
+              pitWallHeight,
+              0.01,
+              darkWallMaterial
+            );
+            wallN.position.set(pitCenterX, pitWallY, pitCenterZ - PIT_SIZE / 2);
+            pitGroup.add(wallN);
+            // South Wall
+            const wallS = createWall(
+              PIT_SIZE,
+              pitWallHeight,
+              0.01,
+              darkWallMaterial
+            );
+            wallS.position.set(pitCenterX, pitWallY, pitCenterZ + PIT_SIZE / 2);
+            pitGroup.add(wallS);
+            // West Wall
+            const wallW = createWall(
+              0.01,
+              pitWallHeight,
+              PIT_SIZE,
+              darkWallMaterial
+            );
+            wallW.position.set(pitCenterX - PIT_SIZE / 2, pitWallY, pitCenterZ);
+            pitGroup.add(wallW);
+            // East Wall
+            const wallE = createWall(
+              0.01,
+              pitWallHeight,
+              PIT_SIZE,
+              darkWallMaterial
+            );
+            wallE.position.set(pitCenterX + PIT_SIZE / 2, pitWallY, pitCenterZ);
+            pitGroup.add(wallE);
+          }
+        }
+
+        // --- Death Plane ---
+        // --- MODIFIED: Use BoxGeometry for reliable collision ---
+        const deathPlaneGeo = new THREE.BoxGeometry(CHUNK_SIZE, 10, CHUNK_SIZE); // 10m thick
+        const deathPlaneMat = new THREE.MeshBasicMaterial({
+          visible: false,
+          side: THREE.DoubleSide,
+        });
+        const deathPlane = new THREE.Mesh(deathPlaneGeo, deathPlaneMat);
+        deathPlane.position.set(CHUNK_SIZE / 2, -PIT_DEPTH - 5, CHUNK_SIZE / 2); // Positioned at the bottom
+        deathPlane.userData.isDeathPlane = true;
+        deathPlane.geometry.computeBoundingBox();
+        chunkGroup.add(deathPlane);
+        objects.push(deathPlane);
+
+        // --- Ceiling & Lights ---
+        const ceiling = new THREE.Group(); // Still need a group for lights
+        chunkGroup.add(ceiling);
+
+        // --- NEW: Add ceiling tiles (strips) above the paths ---
+        const tileGeo = new THREE.BoxGeometry(TILE_SIZE, 0.1, TILE_SIZE);
+        for (let x = 0; x < CHUNK_SIZE; x += TILE_SIZE) {
+          for (let z = 0; z < CHUNK_SIZE; z += TILE_SIZE) {
+            // Check if this tile (x, z) is over a path
+            let onPath = false;
+            // Check horizontal paths
+            for (let i = 0; i < PIT_WALL_COUNT; i++) {
+              const pathZ = i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE;
+              if (
+                z >= pathZ - TILE_SIZE / 2 &&
+                z < pathZ + PIT_PATH_WIDTH + TILE_SIZE / 2
+              ) {
+                // Widen check
+                onPath = true;
+                break;
+              }
+            }
+            // Check vertical paths
+            if (!onPath) {
+              for (let i = 0; i < PIT_WALL_COUNT; i++) {
+                const pathX = i * (PIT_SIZE + PIT_PATH_WIDTH) + PIT_SIZE;
+                if (
+                  x >= pathX - TILE_SIZE / 2 &&
+                  x < pathX + PIT_PATH_WIDTH + TILE_SIZE / 2
+                ) {
+                  // Widen check
+                  onPath = true;
+                  break;
+                }
+              }
+            }
+
+            if (onPath) {
+              const missingTile = random() < MISSING_TILE_PROBABILITY; // --- MODIFIED: Use variable
+              if (missingTile) {
+                if (random() < CEILING_JUNK_DENSITY) {
+                  // --- MODIFIED: Use variable
+                  const pipeLength = TILE_SIZE * (random() * 2 + 1);
+                  const pipeGeo = new THREE.CylinderGeometry(
+                    0.05,
+                    0.05,
+                    pipeLength,
+                    8
+                  );
+                  const pipe = new THREE.Mesh(pipeGeo, pipeMaterial);
+                  pipe.position.set(
+                    x + TILE_SIZE / 2,
+                    WALL_HEIGHT + 0.3,
+                    z + TILE_SIZE / 2
+                  );
+                  if (random() < 0.5) pipe.rotateY(Math.PI / 2);
+                  ceiling.add(pipe);
+                }
+                continue; // Skip tile
+              }
+
+              // Add Tile
+              const tile = new THREE.Mesh(tileGeo.clone(), ceilingMaterial);
+              tile.position.set(
+                x + TILE_SIZE / 2,
+                WALL_HEIGHT,
+                z + TILE_SIZE / 2
+              );
+              tile.receiveShadow = true;
+              ceiling.add(tile);
+
+              // Add Light
+              if (random() < 0.015) {
+                createFluorescentLight(
+                  ceiling,
+                  x + TILE_SIZE / 2,
+                  z + TILE_SIZE / 2
+                );
+              }
+            }
+          }
+        }
+
+        // (Kept old light-spawning loop in case tile-based one is too sparse)
+        for (let x = 1; x < PIT_GRID_SIZE; x++) {
+          for (let z = 1; z < PIT_GRID_SIZE; z++) {
+            if (random() < 0.4) {
+              // Chance per intersection
+              const lightX =
+                x * (PIT_SIZE + PIT_PATH_WIDTH) - PIT_PATH_WIDTH / 2;
+              const lightZ =
+                z * (PIT_SIZE + PIT_PATH_WIDTH) - PIT_PATH_WIDTH / 2;
+              // Check if a light is already here
+              let lightExists = false;
+              ceiling.children.forEach((child) => {
+                if (
+                  child.isPointLight &&
+                  child.position.distanceTo(
+                    new THREE.Vector3(lightX, WALL_HEIGHT - 0.5, lightZ)
+                  ) <
+                    TILE_SIZE / 2
+                ) {
+                  lightExists = true;
+                }
+              });
+              if (!lightExists) {
+                createFluorescentLight(ceiling, lightX, lightZ);
+              }
+            }
+          }
+        }
+
+        // --- Outer Walls with Multiple Openings ---
+        // Need to know where paths MEET the boundary
+        const pathBoundaryIndices = {
+          north: new Set(),
+          south: new Set(),
+          west: new Set(),
+          east: new Set(),
+        };
+        // Populate based on path segment positions
+        pathCollisions.forEach((path) => {
+          const box = new THREE.Box3().setFromObject(path); // Use bounding box in world space relative to chunk
+          if (Math.abs(box.min.z) < 0.1) {
+            // Touches North edge
+            const xIndex = Math.floor(
+              path.position.x / (PIT_SIZE + PIT_PATH_WIDTH)
+            ); // Get grid index
+            pathBoundaryIndices.north.add(xIndex);
+          }
+          if (Math.abs(box.max.z - CHUNK_SIZE) < 0.1) {
+            // Touches South edge
+            const xIndex = Math.floor(
+              path.position.x / (PIT_SIZE + PIT_PATH_WIDTH)
+            );
+            pathBoundaryIndices.south.add(xIndex);
+          }
+          if (Math.abs(box.min.x) < 0.1) {
+            // Touches West edge
+            const zIndex = Math.floor(
+              path.position.z / (PIT_SIZE + PIT_PATH_WIDTH)
+            );
+            pathBoundaryIndices.west.add(zIndex);
+          }
+          if (Math.abs(box.max.x - CHUNK_SIZE) < 0.1) {
+            // Touches East edge
+            const zIndex = Math.floor(
+              path.position.z / (PIT_SIZE + PIT_PATH_WIDTH)
+            );
+            pathBoundaryIndices.east.add(zIndex);
+          }
+        });
+
+        const wallHeight = WALL_HEIGHT + PIT_DEPTH;
+        const yPos = -PIT_DEPTH / 2 + WALL_HEIGHT / 2;
+        const segmentLength = PIT_SIZE + PIT_PATH_WIDTH;
+
+        // North Wall (Segments) - Add wall segment ONLY if the corresponding grid index is NOT in the north set
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.north.has(i)) {
+            // Check if path DOES NOT reach this segment
+            const wall = createWall(
+              segmentLength,
+              wallHeight,
+              WALL_THICKNESS,
+              chunkWallpaperMaterial // --- MODIFIED
+            );
+            const wallX = i * segmentLength + segmentLength / 2;
+            wall.position.set(wallX, yPos, 0);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+        // South Wall (Segments)
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.south.has(i)) {
+            const wall = createWall(
+              segmentLength,
+              wallHeight,
+              WALL_THICKNESS,
+              chunkWallpaperMaterial // --- MODIFIED
+            );
+            const wallX = i * segmentLength + segmentLength / 2;
+            wall.position.set(wallX, yPos, CHUNK_SIZE);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+        // West Wall (Segments)
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.west.has(i)) {
+            const wall = createWall(
+              WALL_THICKNESS,
+              wallHeight,
+              segmentLength,
+              chunkWallpaperMaterial // --- MODIFIED
+            );
+            const wallZ = i * segmentLength + segmentLength / 2;
+            wall.position.set(0, yPos, wallZ);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+        // East Wall (Segments)
+        for (let i = 0; i < PIT_GRID_SIZE; i++) {
+          if (!pathBoundaryIndices.east.has(i)) {
+            const wall = createWall(
+              WALL_THICKNESS,
+              wallHeight,
+              segmentLength,
+              chunkWallpaperMaterial // --- MODIFIED
+            );
+            const wallZ = i * segmentLength + segmentLength / 2;
+            wall.position.set(CHUNK_SIZE, yPos, wallZ);
+            chunkGroup.add(wall);
+            objects.push(wall);
+          }
+        }
+      }
+
+      function generateExitRoom(chunkGroup, random) {
+        // --- Floor (still needed) ---
+        const floorGeometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE);
+        floorGeometry.rotateX(-Math.PI / 2);
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.position.set(CHUNK_SIZE / 2, 0, CHUNK_SIZE / 2);
+        floor.receiveShadow = true;
+        floor.geometry.computeBoundingBox(); // Compute bounding box
+        chunkGroup.add(floor);
+        objects.push(floor);
+
+        // --- Exit Door ---
+        const doorFrameGeo = new THREE.BoxGeometry(1.2, 2.2, 0.3);
+        const doorFrameMat = new THREE.MeshStandardMaterial({
+          color: 0x332211,
+        }); // Darker frame
+        exitDoorFrameMesh = new THREE.Mesh(doorFrameGeo, doorFrameMat); // Store reference
+        exitDoorFrameMesh.position.set(CHUNK_SIZE / 2, 1.1, 0.15); // Place against north wall edge
+        chunkGroup.add(exitDoorFrameMesh);
+        // No collision for frame
+
+        const doorGeo = new THREE.BoxGeometry(1, 2, 0.1);
+        const doorMat = new THREE.MeshStandardMaterial({
+          color: 0x8b4513,
+          roughness: 0.8,
+        }); // Discolored brown
+        exitDoorMesh = new THREE.Mesh(doorGeo, doorMat); // Store reference
+        exitDoorMesh.position.set(CHUNK_SIZE / 2, 1, 0.05); // Slightly inside frame
+        chunkGroup.add(exitDoorMesh);
+        // No collision for visual door
+
+        // --- Exit Sign ---
+        const signCanvas = document.createElement("canvas");
+        signCanvas.width = 256;
+        signCanvas.height = 128;
+        const signContext = signCanvas.getContext("2d");
+        signContext.fillStyle = "#cc0000"; // Red background
+        signContext.fillRect(0, 0, 256, 128);
+        signContext.font = "bold 80px Arial";
+        signContext.fillStyle = "#ffffff"; // White text
+        signContext.textAlign = "center";
+        signContext.textBaseline = "middle";
+        signContext.fillText("EXIT", 128, 64);
+        const signTexture = new THREE.CanvasTexture(signCanvas);
+        const signMat = new THREE.MeshBasicMaterial({ map: signTexture });
+        const signGeo = new THREE.PlaneGeometry(1, 0.5); // Adjust size as needed
+        exitSignMesh = new THREE.Mesh(signGeo, signMat); // Store reference
+        exitSignMesh.position.set(CHUNK_SIZE / 2, 2.5, 0.31); // Position above door frame
+        chunkGroup.add(exitSignMesh);
+
+        // Flickering light above door
+        const exitLight = new THREE.PointLight(0xffccaa, 0.8, 4); // Warmer, dimmer flicker
+        exitLight.position.set(CHUNK_SIZE / 2, 2.8, 0.5); // Slightly higher
+        exitLight.castShadow = false;
+        chunkGroup.add(exitLight);
+
+        // --- MODIFIED: Set base intensity and color based on red shift state ---
+        if (isRedShiftActive) {
+          exitLight.color.set(0xff4444); // Also red
+          exitLight.userData.baseIntensity = 0.8 * 0.8; // Apply dimming
+        } else {
+          exitLight.userData.baseIntensity = 0.8;
+        }
+        exitLight.userData.isExitLight = true; // Flag for animation
+
+        // Exit Trigger (slightly larger and in front of door)
+        const exitTriggerGeo = new THREE.BoxGeometry(1.5, 2.5, 0.8);
+        const exitTriggerMat = new THREE.MeshBasicMaterial({
+          visible: false,
+          side: THREE.DoubleSide,
+        });
+        exitTriggerMesh = new THREE.Mesh(exitTriggerGeo, exitTriggerMat); // Store reference
+        exitTriggerMesh.position.set(CHUNK_SIZE / 2, 1.25, 0.4); // Centered in front
+        exitTriggerMesh.userData.isExit = true;
+        exitTriggerMesh.geometry.computeBoundingBox(); // Compute bounding box
+        chunkGroup.add(exitTriggerMesh);
+        objects.push(exitTriggerMesh);
+      }
+
+      function createWall(width, height, depth, material) {
+        const geometry = new THREE.BoxGeometry(width, height, depth);
+        const wall = new THREE.Mesh(geometry, material);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        geometry.computeBoundingBox(); // Compute bounding box
+        return wall;
+      }
+
+      function createFluorescentLight(parent, x, z) {
+        // --- NEW: Check if this light is in a "lights out" chunk ---
+        // parent = ceiling group, parent.parent = chunk group
+        if (parent && parent.parent && parent.parent.userData.isLightsOut) {
+          // Just create a dark fixture and return, no light
+          const lightFixtureGeo = new THREE.BoxGeometry(
+            TILE_SIZE,
+            0.1,
+            TILE_SIZE
+          );
+          const lightFixtureMat = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+          }); // Dark fixture
+          const fixture = new THREE.Mesh(lightFixtureGeo, lightFixtureMat);
+          fixture.position.set(x, WALL_HEIGHT, z);
+          parent.add(fixture);
+
+          // Add to disposables
+          if (parent.parent.userData.disposables) {
+            parent.parent.userData.disposables.push(lightFixtureMat);
+          }
+          return; // Don't create the light
+        }
+        // --- End NEW Check ---
+
+        const lightFixtureGeo = new THREE.BoxGeometry(
+          TILE_SIZE,
+          0.1,
+          TILE_SIZE
+        );
+        const lightFixtureMat = new THREE.MeshStandardMaterial({
+          color: 0xbbbbbb,
+        });
+        const fixture = new THREE.Mesh(lightFixtureGeo, lightFixtureMat);
+        fixture.position.set(x, WALL_HEIGHT, z);
+        parent.add(fixture);
+
+        const bulbGeo = new THREE.BoxGeometry(
+          TILE_SIZE * 0.8,
+          0.05,
+          TILE_SIZE * 0.8
+        );
+        const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Emissive
+        const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+        bulb.position.set(x, WALL_HEIGHT - 0.05, z);
+        parent.add(bulb);
+
+        // Point light for illumination
+        const light = new THREE.PointLight(0xffffff, 0.5, 8); // Brighter, shorter range
+        light.position.set(x, WALL_HEIGHT - 0.5, z);
+        light.castShadow = false; // Disabled shadows for performance and to fix shader error
+        parent.add(light);
+
+        // Flag for flickering
+        light.userData.isFluorescent = true;
+
+        // --- MODIFIED: Set color and base intensity based on red shift state ---
+        if (isRedShiftActive) {
+          light.color.set(0xff4444); // Red
+          light.userData.baseIntensity = 0.5 * 0.8; // Dimmed
+        } else {
+          light.userData.baseIntensity = 0.5; // Normal
+        }
+      }
+
+      // --- Prop Creation ---
+      function createDesk() {
+        const deskGroup = new THREE.Group();
+        const deskHeight = 0.75;
+        const topGeo = new THREE.BoxGeometry(1.5, 0.05, 0.7);
+        const top = new THREE.Mesh(topGeo, deskMaterial);
+        top.position.y = deskHeight - 0.025;
+        deskGroup.add(top);
+
+        const legGeo = new THREE.BoxGeometry(0.05, deskHeight - 0.05, 0.05);
+        const legPositions = [
+          [-0.7, 0, -0.3],
+          [-0.7, 0, 0.3],
+          [0.7, 0, -0.3],
+          [0.7, 0, 0.3],
+        ];
+        legPositions.forEach((pos) => {
+          const leg = new THREE.Mesh(legGeo, deskMaterial);
+          leg.position.set(pos[0], (deskHeight - 0.05) / 2, pos[2]);
+          deskGroup.add(leg);
+        });
+        // Compute a combined bounding box for the group for collision
+        // We'll treat the whole desk as one collision object
+        deskGroup.geometry = new THREE.BoxGeometry(1.5, deskHeight, 0.7);
+        deskGroup.geometry.computeBoundingBox();
+        return deskGroup;
+      }
+
+      function createChair() {
+        const chairGroup = new THREE.Group();
+        const seatHeight = 0.45;
+        const backHeight = 0.5;
+
+        const seatGeo = new THREE.BoxGeometry(0.5, 0.05, 0.5);
+        const seat = new THREE.Mesh(seatGeo, chairMaterial);
+        seat.position.y = seatHeight - 0.025;
+        chairGroup.add(seat);
+
+        const backGeo = new THREE.BoxGeometry(0.5, backHeight, 0.05);
+        const back = new THREE.Mesh(backGeo, chairMaterial);
+        back.position.set(0, seatHeight + backHeight / 2 - 0.025, -0.225);
+        chairGroup.add(back);
+
+        const legGeo = new THREE.BoxGeometry(0.04, seatHeight - 0.05, 0.04);
+        const legPositions = [
+          [-0.23, 0, -0.23],
+          [-0.23, 0, 0.23],
+          [0.23, 0, -0.23],
+          [0.23, 0, 0.23],
+        ];
+        legPositions.forEach((pos) => {
+          const leg = new THREE.Mesh(legGeo, chairMaterial);
+          leg.position.set(pos[0], (seatHeight - 0.05) / 2, pos[2]);
+          chairGroup.add(leg);
+        });
+        // Compute a combined bounding box for the group
+        chairGroup.geometry = new THREE.BoxGeometry(
+          0.5,
+          seatHeight + backHeight,
+          0.5
+        ); // Approximate size
+        chairGroup.geometry.computeBoundingBox();
+        return chairGroup;
+      }
+
+      // Simple pseudo-random number generator for seeded randomness
+      function createSeededRandom(seed) {
+        let state = seed % 2147483647;
+        if (state <= 0) state += 2147483646;
+        return () => {
+          state = (state * 16807) % 2147483647;
+          return (state - 1) / 2147483646; // Normalize to [0, 1)
+        };
+      }
+
+      function updateVisibleChunks() {
+        const playerChunkX = Math.floor(camera.position.x / CHUNK_SIZE);
+        const playerChunkZ = Math.floor(camera.position.z / CHUNK_SIZE);
+
+        // Update current chunk if changed
+        if (
+          playerChunkX !== currentChunk.x ||
+          playerChunkZ !== currentChunk.z
+        ) {
+          currentChunk = { x: playerChunkX, z: playerChunkZ };
+        }
+
+        // --- NEW: Red Shift Logic ---
+        const distFromSpawnSq =
+          playerChunkX * playerChunkX + playerChunkZ * playerChunkZ;
+        const redShiftThresholdSq = RED_SHIFT_DISTANCE * RED_SHIFT_DISTANCE; // --- MODIFIED
+        const redShiftTarget = distFromSpawnSq >= redShiftThresholdSq;
+
+        if (redShiftTarget && !isRedShiftActive) {
+          // --- Activate Red Shift ---
+          isRedShiftActive = true;
+          redShiftActivationChunk = { x: playerChunkX, z: playerChunkZ }; // NEW: Store activation chunk
+          console.log("!!! RED SHIFT ACTIVATED !!!");
+          console.log(
+            "Sub-level 0.1 conditions met. (Awaiting sub-level file)"
+          );
+          scene.background.set(0x330000); // Dark red background
+          scene.fog.color.set(0x330000); // Dark red fog
+          ambientLight.color.set(0x550000); // Dark red ambient
+          // Update all existing, visible lights
+          generatedChunks.forEach((chunk, key) => {
+            if (chunk.visible) {
+              chunk.traverse((obj) => {
+                if (
+                  obj.isPointLight &&
+                  (obj.userData.isFluorescent || obj.userData.isExitLight)
+                ) {
+                  obj.color.set(0xff4444); // Red light
+                  if (obj.userData.baseIntensity > 0.1) {
+                    // Avoid re-dimming
+                    obj.userData.baseIntensity *= 0.8; // Make them a bit dimmer/moodier
+                  }
+                }
+              });
+            }
+          });
+        } else if (!redShiftTarget && isRedShiftActive) {
+          // --- Deactivate Red Shift (if player goes back) ---
+          isRedShiftActive = false;
+          redShiftActivationChunk = null; // NEW: Clear activation chunk
+          console.log("Red Shift Deactivated.");
+          scene.background.set(0x1a1a10);
+          scene.fog.color.set(0x1a1a10);
+          ambientLight.color.set(0x404040); // Reset to original
+          // Reset all existing, visible lights
+          generatedChunks.forEach((chunk, key) => {
+            if (chunk.visible) {
+              chunk.traverse((obj) => {
+                if (
+                  obj.isPointLight &&
+                  (obj.userData.isFluorescent || obj.userData.isExitLight)
+                ) {
+                  if (obj.userData.isExitLight) {
+                    obj.color.set(0xffccaa); // Exit light color
+                  } else {
+                    obj.color.set(0xffffff); // Fluorescent color
+                  }
+                  if (obj.userData.baseIntensity < 1.0) {
+                    // Avoid re-brightening
+                    obj.userData.baseIntensity /= 0.8; // Restore intensity
+                  }
+                }
+              });
+            }
+          });
+        }
+        // --- End Red Shift Logic ---
+
+        // --- NEW: Red Shift Exit Trigger ---
+        if (
+          isRedShiftActive &&
+          redShiftActivationChunk &&
+          !gameWon &&
+          gameRunning
+        ) {
+          // Check !gameWon and gameRunning
+          const distFromActivationSq =
+            Math.pow(playerChunkX - redShiftActivationChunk.x, 2) +
+            Math.pow(playerChunkZ - redShiftActivationChunk.z, 2);
+
+          if (
+            distFromActivationSq >=
+            RED_SHIFT_EXIT_DISTANCE * RED_SHIFT_EXIT_DISTANCE
+          ) {
+            // --- MODIFIED: Use new triggerLevelLoad function ---
+            triggerLevelLoad(
+              "Level0.1.html",
+              "You've gone too far...",
+              "Loading Level 0.1..."
+            );
+          }
+        }
+        // --- End Red Shift Exit Trigger ---
+
+        // --- Proactive Chunk Generation & Visibility ---
+        const viewDistance = 1; // Keep 3x3 visible
+        for (let dx = -viewDistance; dx <= viewDistance; dx++) {
+          for (let dz = -viewDistance; dz <= viewDistance; dz++) {
+            const checkX = playerChunkX + dx;
+            const checkZ = playerChunkZ + dz;
+            const chunkKey = `${checkX},${checkZ}`;
+
+            // Generate if it doesn't exist within the view distance
+            if (!generatedChunks.has(chunkKey)) {
+              // --- MODIFIED: Add to async generation queue ---
+              // Check if it's not already in the queue
+              if (!chunkGenerationQueue.includes(chunkKey)) {
+                chunkGenerationQueue.push(chunkKey);
+              }
+            } else {
+              // Ensure chunk is visible if within range
+              const chunk = generatedChunks.get(chunkKey);
+              if (chunk && !chunk.visible) chunk.visible = true; // Make visible if needed
+            }
+          }
+        }
+
+        // Hide chunks outside the view distance AND Handle Exit Despawning
+        generatedChunks.forEach((chunk, key) => {
+          const [cx, cz] = key.split(",").map(Number);
+          const isOutsideView =
+            Math.abs(cx - playerChunkX) > viewDistance ||
+            Math.abs(cz - playerChunkZ) > viewDistance;
+
+          if (isOutsideView) {
+            if (chunk.visible) {
+              console.log("Hiding chunk:", key); // Log hiding
+              chunk.visible = false;
+
+              // --- MODIFIED: Disposables loop now handles textures/materials ---
+              if (chunk.userData.disposables) {
+                console.log(
+                  `Disposing ${chunk.userData.disposables.length} items for chunk ${key}`
+                );
+                chunk.userData.disposables.forEach((item) => {
+                  if (item.dispose) {
+                    item.dispose(); // Dispose texture or material
+                  }
+                });
+                chunk.userData.disposables = []; // Clear the array
+              }
+            }
+
+            // Check if this hidden chunk IS the exit chunk and despawn its elements
+            if (
+              !gameWon &&
+              exitChunkCoords &&
+              cx === exitChunkCoords.x &&
+              cz === exitChunkCoords.z
+            ) {
+              console.log(
+                "Exit chunk",
+                key,
+                "is out of view. Despawning exit elements."
+              );
+              // Remove exit-specific elements if they exist
+              if (exitTriggerMesh && exitTriggerMesh.parent === chunk) {
+                chunk.remove(exitTriggerMesh);
+                const triggerIndex = objects.indexOf(exitTriggerMesh);
+                if (triggerIndex > -1) objects.splice(triggerIndex, 1);
+                exitTriggerMesh = null;
+              }
+              if (exitSignMesh && exitSignMesh.parent === chunk)
+                chunk.remove(exitSignMesh);
+              if (exitDoorFrameMesh && exitDoorFrameMesh.parent === chunk)
+                chunk.remove(exitDoorFrameMesh);
+              if (exitDoorMesh && exitDoorMesh.parent === chunk)
+                chunk.remove(exitDoorMesh);
+              // Also remove the exit light? Or leave it as a normal light? Remove it for clarity.
+              const exitLight = chunk.children.find(
+                (c) => c.userData.isExitLight
+              );
+              if (exitLight) chunk.remove(exitLight);
+
+              chunk.userData.isExitChunk = false; // Mark it as no longer the exit
+              exitChunkCoords = null; // Allow a new exit to spawn
+            }
+          } else {
+            // If chunk is coming back into view, ensure it's visible
+            if (!chunk.visible) {
+              chunk.visible = true;
+            }
+          }
+        });
+      }
+
+      // --- NEW: Asynchronous Chunk Generation ---
+      function processChunkQueue() {
+        // Don't run if we're already busy
+        if (isGeneratingChunk) {
+          setTimeout(processChunkQueue, 50); // Check back later
+          return;
+        }
+
+        if (chunkGenerationQueue.length > 0) {
+          isGeneratingChunk = true;
+          const chunkKey = chunkGenerationQueue.shift(); // Get next chunk
+
+          // Use setTimeout to run this task asynchronously, yielding to the main thread
+          setTimeout(() => {
+            try {
+              const [checkX, checkZ] = chunkKey.split(",").map(Number);
+              // Double-check it wasn't generated by some other process
+              if (!generatedChunks.has(chunkKey)) {
+                generateChunk(checkX, checkZ);
+              }
+            } catch (e) {
+              console.error("Error generating chunk:", chunkKey, e);
+            }
+
+            isGeneratingChunk = false;
+            // Immediately schedule a check for the next chunk
+            // This processes one chunk per "tick" (roughly)
+            requestAnimationFrame(processChunkQueue);
+          }, 10); // A small delay to ensure rendering can happen
+        } else {
+          // Queue is empty, check again in a second
+          setTimeout(processChunkQueue, 1000);
+        }
+      }
+
+      // --- Item Handling ---
+      function spawnItem(itemName, position, parentGroup) {
+        const itemDef = ITEMS[itemName];
+        if (!itemDef) return;
+
+        let itemMesh;
+
+        if (itemName === "flashlight") {
+          const flashGeo = new THREE.CylinderGeometry(0.05, 0.07, 0.2, 16);
+          const flashMat = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            metalness: 0.9,
+            roughness: 0.3,
+          });
+          itemMesh = new THREE.Mesh(flashGeo, flashMat);
+          itemMesh.rotateX(Math.PI / 2);
+        } else if (itemName === "almond_water") {
+          const bottleGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.15, 12);
+          const bottleMat = new THREE.MeshStandardMaterial({
+            color: 0xeeeeff,
+            transparent: true,
+            opacity: 0.8,
+            roughness: 0.1,
+          });
+          itemMesh = new THREE.Mesh(bottleGeo, bottleMat);
+
+          // Simple label (optional, can add text later if needed)
+          const labelGeo = new THREE.CylinderGeometry(0.041, 0.041, 0.08, 12);
+          const labelMat = new THREE.MeshStandardMaterial({ color: 0xffeebb });
+          const label = new THREE.Mesh(labelGeo, labelMat);
+          itemMesh.add(label);
+        }
+
+        if (itemMesh) {
+          itemMesh.position.copy(position);
+          itemMesh.userData.itemName = itemName;
+          itemMesh.userData.isInteractable = true;
+          itemMesh.castShadow = true;
+          parentGroup.add(itemMesh);
+          interactableItems.push(itemMesh);
+        }
+      }
+
+      function pickupItem(itemObject) {
+        const itemName = itemObject.userData.itemName;
+        const itemDef = ITEMS[itemName];
+
+        // Try adding to hotbar first (if stackable)
+        if (itemDef.stackable) {
+          for (let i = 0; i < hotbarItems.length; i++) {
+            const item = hotbarItems[i];
+            if (
+              item &&
+              item.id === itemName &&
+              item.quantity < itemDef.maxStack
+            ) {
+              // Check ID
+              item.quantity++;
+              removeItemObject(itemObject);
+              updateHotbarUI();
+              return;
+            }
+          }
+        }
+
+        // Try adding to inventory (if stackable)
+        if (itemDef.stackable) {
+          for (let i = 0; i < inventory.length; i++) {
+            const item = inventory[i];
+            if (
+              item &&
+              item.id === itemName &&
+              item.quantity < itemDef.maxStack
+            ) {
+              // Check ID
+              item.quantity++;
+              removeItemObject(itemObject);
+              updateInventoryUI();
+              return;
+            }
+          }
+        }
+
+        // Try adding to empty hotbar slot
+        for (let i = 0; i < hotbarItems.length; i++) {
+          if (!hotbarItems[i]) {
+            hotbarItems[i] = {
+              name: itemDef.name,
+              id: itemName, // Store item ID
+              quantity: 1,
+            };
+            removeItemObject(itemObject);
+            updateHotbarUI();
+            return;
+          }
+        }
+
+        // Try adding to empty inventory slot
+        for (let i = 0; i < inventory.length; i++) {
+          if (!inventory[i]) {
+            inventory[i] = {
+              name: itemDef.name,
+              id: itemName, // Store item ID
+              quantity: 1,
+            };
+            removeItemObject(itemObject);
+            updateInventoryUI();
+            return;
+          }
+        }
+
+        // Inventory and hotbar are full
+        showInteractionPrompt("Inventory Full", 2000);
+      }
+
+      function removeItemObject(itemObject) {
+        itemObject.parent.remove(itemObject);
+        const index = interactableItems.indexOf(itemObject);
+        if (index > -1) {
+          interactableItems.splice(index, 1);
+        }
+        // Ensure prompt hides if the picked up item was the one showing prompt
+        interactionPrompt.style.display = "none";
+      }
+
+      function findItemInInventory(itemId) {
+        return inventory.findIndex((item) => item && item.id === itemId);
+      }
+
+      function findItemInHotbar(itemId) {
+        return hotbarItems.findIndex((item) => item && item.id === itemId);
+      }
+
+      function toggleFlashlight() {
+        if (flashlight.intensity > 0) {
+          flashlight.intensity = 0.0;
+          flashlight.castShadow = false;
+        } else {
+          flashlight.intensity = 1.0; // Strong flashlight
+          flashlight.castShadow = true;
+          flashlight.shadow.mapSize.width = 1024; // Crisper shadows
+          flashlight.shadow.mapSize.height = 1024;
+          flashlight.shadow.camera.near = 0.1;
+          flashlight.shadow.camera.far = 20;
+        }
+      }
+
+      // --- Inventory UI ---
+
+      function toggleInventory() {
+        inventoryOpen = !inventoryOpen;
+        if (inventoryOpen) {
+          controls.unlock(); // This triggers the unlock event listener
+          inventoryScreen.style.display = "flex";
+          updateInventoryUI();
+          selectInventorySlot(-1); // Deselect any slot
+        } else {
+          inventoryScreen.style.display = "none";
+          // Don't explicitly lock here, the unlock listener handles it
+          // We need to re-lock if the game wasn't paused for other reasons
+          if (!blocker.style.display || blocker.style.display === "none") {
+            if (document.pointerLockElement !== renderer.domElement) {
+              // Only lock if not already locked (prevents console error)
+              controls.lock();
+            }
+          }
+        }
+      }
+
+      function updateInventoryUI() {
+        const slots = inventoryGrid.children;
+        for (let i = 0; i < 9; i++) {
+          const item = inventory[i];
+          const slot = slots[i];
+          if (item) {
+            slot.innerHTML = `<span class="item-name">${item.name}</span>`;
+            if (item.quantity > 1) {
+              slot.innerHTML += `<span class="item-quantity">${item.quantity}</span>`;
+            }
+          } else {
+            slot.innerHTML = `[Empty]`;
+          }
+          // Update selected state visual
+          if (i === selectedInventorySlot) {
+            slot.classList.add("selected");
+          } else {
+            slot.classList.remove("selected");
+          }
+        }
+        // Update button states based on selection
+        const selectedItem = inventory[selectedInventorySlot];
+        invUseButton.disabled = !selectedItem;
+        invDropButton.disabled = !selectedItem;
+        invHotbarButtons.forEach((btn) => (btn.disabled = !selectedItem));
+      }
+
+      function updateHotbarUI() {
+        for (let i = 0; i < 3; i++) {
+          const item = hotbarItems[i];
+          const slot = hotbar[i];
+          const nameEl = slot.querySelector(".item-name");
+          const qtyEl = slot.querySelector(".item-quantity");
+
+          if (item) {
+            nameEl.textContent = item.name;
+            if (item.quantity > 1) {
+              qtyEl.textContent = item.quantity;
+              qtyEl.style.display = "block";
+            } else {
+              qtyEl.style.display = "none";
+            }
+          } else {
+            nameEl.textContent = "";
+            qtyEl.style.display = "none";
+          }
+        }
+      }
+
+      function selectInventorySlot(index) {
+        selectedInventorySlot = index;
+        updateInventoryUI(); // Just call update which handles visual + buttons
+      }
+
+      function useInventoryItem() {
+        const item = inventory[selectedInventorySlot];
+        if (item) {
+          const itemDef = ITEMS[item.id];
+          if (itemDef.use) {
+            itemDef.use(item, selectedInventorySlot, "inventory");
+            // Check if item was fully consumed
+            if (!inventory[selectedInventorySlot]) {
+              selectInventorySlot(-1); // Deselect if used up
+            } else {
+              updateInventoryUI(); // Just update quantities
+            }
+          }
+        }
+      }
+
+      function dropInventoryItem() {
+        const item = inventory[selectedInventorySlot];
+        if (item) {
+          // Spawn item in front of player
+          const dropPos = camera.position.clone();
+          const dropDir = camera.getWorldDirection(new THREE.Vector3());
+          dropPos.add(dropDir.multiplyScalar(1.5));
+          dropPos.y = 0.5; // On the floor
+
+          // Find parent chunk
+          const chunkX = Math.floor(dropPos.x / CHUNK_SIZE);
+          const chunkZ = Math.floor(dropPos.z / CHUNK_SIZE);
+          const chunkKey = `${chunkX},${chunkZ}`;
+          const chunkGroup = generatedChunks.get(chunkKey);
+
+          if (chunkGroup && chunkGroup.visible) {
+            // Only drop if chunk is visible/loaded
+            // Adjust position to be relative to chunk
+            dropPos.sub(chunkGroup.position);
+            spawnItem(item.id, dropPos, chunkGroup);
+          }
+
+          // Remove from inventory
+          inventory[selectedInventorySlot] = null;
+          updateInventoryUI();
+          selectInventorySlot(-1); // Deselect
+        }
+      }
+
+      function moveToHotbar(hotbarIndex) {
+        if (selectedInventorySlot === -1) return;
+
+        const itemToMove = inventory[selectedInventorySlot];
+        if (!itemToMove) return;
+
+        const itemInHotbar = hotbarItems[hotbarIndex];
+
+        // Swap
+        hotbarItems[hotbarIndex] = itemToMove;
+        inventory[selectedInventorySlot] = itemInHotbar; // Might be null
+
+        updateInventoryUI();
+        updateHotbarUI();
+        selectInventorySlot(-1);
+      }
+
+      function selectHotbarSlot(index) {
+        selectedHotbarSlot = index;
+        for (let i = 0; i < 3; i++) {
+          if (i === index) {
+            hotbar[i].classList.add("selected");
+          } else {
+            hotbar[i].classList.remove("selected");
+          }
+        }
+      }
+
+      function useHotbarItem() {
+        const item = hotbarItems[selectedHotbarSlot];
+        if (item) {
+          const itemDef = ITEMS[item.id];
+          if (itemDef.use) {
+            itemDef.use(item, selectedHotbarSlot, "hotbar");
+            updateHotbarUI(); // Refresh UI
+          }
+        }
+      }
+
+      // --- Game Loop ---
+
+      function animate() {
+        // Only request next frame if the game is running OR the inventory is open
+        if (gameRunning || inventoryOpen) {
+          requestAnimationFrame(animate);
+        }
+
+        // Only update game logic if gameRunning is true
+        if (gameRunning) {
+          const time = performance.now();
+          const delta = Math.min((time - prevTime) / 1000, 0.05); // Clamp delta time to avoid large jumps
+
+          updatePlayer(delta);
+          updateStats(delta);
+          updateWorld(delta);
+          checkInteractions();
+
+          prevTime = time;
+        }
+
+        // Always render, even if paused or in inventory
+        renderer.render(scene, camera);
+      }
+
+      function updatePlayer(delta) {
+        if (controls.isLocked === false) return;
+
+        // Determine current speed
+        let speed = isCrouching ? playerCrouchSpeed : playerSpeed;
+        if (
+          isSprinting &&
+          !isCrouching &&
+          playerStamina > 0 &&
+          (moveForward || moveBackward || moveLeft || moveRight)
+        ) {
+          speed = playerSprintSpeed;
+          playerStamina -= 20 * delta; // Drain stamina
+          if (playerStamina < 0) playerStamina = 0;
+        } else if (!isSprinting && playerStamina < maxStamina) {
+          playerStamina += 10 * delta; // Regenerate stamina
+          if (playerStamina > maxStamina) playerStamina = maxStamina;
+        }
+
+        // Calculate movement direction based on camera (apply delta later)
+        playerDirection.z = Number(moveForward) - Number(moveBackward);
+        playerDirection.x = Number(moveRight) - Number(moveLeft);
+        playerDirection.normalize(); // Ensure consistent speed diagonal
+
+        // Apply gravity
+        playerVelocity.y -= playerGravity * delta;
+
+        // Store old position
+        const oldPosition = camera.position.clone();
+        const oldVelocityY = playerVelocity.y; // Store Y velocity before potential collision reset
+
+        // Calculate intended movement vectors based on camera direction
+        const moveVector = new THREE.Vector3();
+        camera.getWorldDirection(moveVector); // Get camera forward direction
+        moveVector.y = 0; // Ignore vertical component for horizontal movement
+        moveVector.normalize();
+
+        const rightVector = new THREE.Vector3()
+          .crossVectors(camera.up, moveVector)
+          .normalize();
+
+        // Calculate displacement for X and Z based on input and camera direction
+        const deltaX =
+          (rightVector.x * playerDirection.x +
+            moveVector.x * playerDirection.z) *
+          speed *
+          delta;
+        const deltaZ =
+          (rightVector.z * playerDirection.x +
+            moveVector.z * playerDirection.z) *
+          speed *
+          delta;
+        const deltaY = playerVelocity.y * delta;
+
+        // --- Collision Detection (Separate Axes Refined) ---
+        let collidedObjectY = null;
+
+        // Move X
+        camera.position.x += deltaX;
+        if (checkCollisionXZ()) {
+          // Use new XZ check
+          camera.position.x = oldPosition.x; // Revert X
+        }
+
+        // Move Z
+        camera.position.z += deltaZ;
+        if (checkCollisionXZ()) {
+          // Use new XZ check
+          camera.position.z = oldPosition.z; // Revert Z
+        }
+
+        // --- MODIFIED: Swept Y-Collision Check ---
+        collidedObjectY = checkCollision(deltaY); // Pass deltaY
+
+        if (collidedObjectY) {
+          // Ensure collided object has a valid world matrix and bounding box
+          collidedObjectY.updateMatrixWorld(); // Ensure matrix is up-to-date
+
+          // Use geometry's bounding box applied with world matrix
+          let objectBoxY = null;
+          if (
+            collidedObjectY.geometry &&
+            collidedObjectY.geometry.boundingBox
+          ) {
+            objectBoxY = collidedObjectY.geometry.boundingBox
+              .clone()
+              .applyMatrix4(collidedObjectY.matrixWorld);
+          } else {
+            // Fallback for groups or objects without precomputed geom bbox
+            objectBoxY = new THREE.Box3().setFromObject(collidedObjectY);
+          }
+
+          if (collidedObjectY.userData.isDeathPlane) {
+            endGame(false); // Player fell
+            return;
+          }
+          if (collidedObjectY.userData.isExit) {
+            // --- MODIFIED: Trigger Level 1 load ---
+            triggerLevelLoad(
+              "Level1.html",
+              "You Escaped...?",
+              "Loading Level 1..."
+            );
+            return;
+          }
+
+          // Hit floor or ceiling
+          if (oldVelocityY <= 0) {
+            // Moving down
+            camera.position.y =
+              objectBoxY.max.y +
+              (isCrouching ? playerCrouchHeight : playerHeight);
+            playerVelocity.y = 0;
+            canJump = true;
+          } else {
+            // Moving up
+            camera.position.y = objectBoxY.min.y - 0.01; // Tiny offset below ceiling
+            playerVelocity.y = 0;
+          }
+        } else {
+          // NO collision, apply movement
+          camera.position.y += deltaY;
+          canJump = false; // We are in the air
+        }
+        // --- End Swept Y-Collision Check ---
+
+        // Update player height (crouch) - Apply smoothing only if not blocked
+        const currentCameraHeight = camera.position.y; // Where the camera currently is
+        const currentBaseHeight =
+          currentCameraHeight -
+          (isCrouching ? playerCrouchHeight : playerHeight); // Calculate current foot position
+        const targetPlayerHeight = isCrouching
+          ? playerCrouchHeight
+          : playerHeight;
+        const targetCameraY = currentBaseHeight + targetPlayerHeight; // Calculate where camera *should* be
+
+        // Check for un-crouch collision ONLY if trying to stand up
+        if (!isCrouching && targetCameraY > currentCameraHeight) {
+          const standCheckPos = camera.position.clone();
+          standCheckPos.y = targetCameraY; // Check at the potential standing camera height
+
+          // Check slightly above the target camera height
+          const headBox = new THREE.Box3(
+            new THREE.Vector3(
+              standCheckPos.x - playerRadius,
+              standCheckPos.y - 0.1,
+              standCheckPos.z - playerRadius
+            ), // Check just below target top
+            new THREE.Vector3(
+              standCheckPos.x + playerRadius,
+              standCheckPos.y + 0.1,
+              standCheckPos.z + playerRadius
+            ) // Check just above target top
+          );
+
+          let headCollision = false;
+          for (let i = 0; i < objects.length; i++) {
+            const object = objects[i];
+            if (
+              !object ||
+              !object.geometry ||
+              !object.visible ||
+              !object.parent ||
+              !object.parent.visible
+            )
+              continue;
+            if (
+              object.userData.isDeathPlane ||
+              object.userData.isExit ||
+              object === collidedObjectY
+            )
+              continue;
+
+            object.updateMatrixWorld();
+            let objectBox = null;
+            if (object.geometry.boundingBox) {
+              objectBox = object.geometry.boundingBox
+                .clone()
+                .applyMatrix4(object.matrixWorld);
+            } else {
+              objectBox = new THREE.Box3().setFromObject(object);
+            }
+
+            if (headBox.intersectsBox(objectBox)) {
+              headCollision = true;
+              break;
+            }
+          }
+          // If no collision above, allow standing up smoothly
+          if (!headCollision) {
+            const smoothFactor = 1.0 - Math.exp(-15 * delta); // Smoothing factor
+            camera.position.y +=
+              (targetCameraY - camera.position.y) * smoothFactor;
+          } else {
+            // Blocked from standing, force crouch state visually if needed
+            isCrouching = true; // Stay crouching visually/logically
+            // Don't change camera.position.y here, let the floor collision handle the base
+          }
+        } else {
+          // Crouching or already standing, allow smooth height change towards target
+          const smoothFactor = 1.0 - Math.exp(-15 * delta); // Smoothing factor
+          // Ensure we don't smooth *through* the floor if already grounded
+          if (canJump && targetCameraY < camera.position.y) {
+            // Don't smooth down if grounded and trying to crouch immediately
+            camera.position.y = targetCameraY;
+          } else {
+            camera.position.y +=
+              (targetCameraY - camera.position.y) * smoothFactor;
+          }
+        }
+
+        // Update chunk loading/visibility based on new position
+        updateVisibleChunks();
+      }
+
+      // --- MODIFIED: Swept Collision Check for Y-Axis ---
+      function checkCollision(deltaY = 0) {
+        const playerHeightActual = isCrouching
+          ? playerCrouchHeight
+          : playerHeight;
+        const playerBottom = camera.position.y - playerHeightActual;
+
+        // Create a "swept" bounding box that covers the entire movement
+        const playerBox = new THREE.Box3(
+          new THREE.Vector3(
+            camera.position.x - playerRadius,
+            playerBottom + Math.min(0, deltaY), // Start from the lowest point (current or future)
+            camera.position.z - playerRadius
+          ),
+          new THREE.Vector3(
+            camera.position.x + playerRadius,
+            camera.position.y + Math.max(0, deltaY), // End at the highest point (current or future)
+            camera.position.z + playerRadius
+          )
+        );
+
+        for (let i = 0; i < objects.length; i++) {
+          const object = objects[i];
+          if (
+            !object ||
+            !object.visible ||
+            !object.parent ||
+            !object.parent.visible
+          )
+            continue; // Skip non-visible
+
+          // Ensure object has geometry and bounding box
+          if (!object.geometry || !object.geometry.boundingBox) {
+            // Try computing if missing, especially for grouped props
+            if (
+              object.geometry &&
+              typeof object.geometry.computeBoundingBox === "function"
+            ) {
+              object.geometry.computeBoundingBox();
+            }
+            // No else if for pitfall floor, the individual path segments have BBs
+
+            if (!object.geometry || !object.geometry.boundingBox) {
+              // Still no bounding box (might be an empty group or light), skip it
+              continue;
+            }
+          }
+
+          object.updateMatrixWorld();
+          const objectBox = object.geometry.boundingBox
+            .clone()
+            .applyMatrix4(object.matrixWorld);
+
+          if (playerBox.intersectsBox(objectBox)) {
+            return object; // Return the collided object
+          }
+        }
+        return null; // No collision
+      }
+
+      // NEW function for horizontal collision with step height
+      function checkCollisionXZ() {
+        const playerHeightActual = isCrouching
+          ? playerCrouchHeight
+          : playerHeight;
+        const playerBottom = camera.position.y - playerHeightActual + 0.1; // ADDED: Step height
+        const playerBox = new THREE.Box3(
+          new THREE.Vector3(
+            camera.position.x - playerRadius,
+            playerBottom, // Use stepped-up bottom
+            camera.position.z - playerRadius
+          ),
+          new THREE.Vector3(
+            camera.position.x + playerRadius,
+            camera.position.y, // Top of head remains the same
+            camera.position.z + playerRadius
+          )
+        );
+
+        for (let i = 0; i < objects.length; i++) {
+          const object = objects[i];
+          if (
+            !object ||
+            !object.visible ||
+            !object.parent ||
+            !object.parent.visible
+          )
+            continue; // Skip non-visible
+
+          // Skip death planes and exits for XZ collisions
+          if (object.userData.isDeathPlane || object.userData.isExit) continue;
+
+          // Ensure object has geometry and bounding box
+          if (!object.geometry || !object.geometry.boundingBox) {
+            // Try computing if missing, especially for grouped props
+            if (
+              object.geometry &&
+              typeof object.geometry.computeBoundingBox === "function"
+            ) {
+              object.geometry.computeBoundingBox();
+            }
+
+            if (!object.geometry || !object.geometry.boundingBox) {
+              continue;
+            }
+          }
+
+          object.updateMatrixWorld();
+          const objectBox = object.geometry.boundingBox
+            .clone()
+            .applyMatrix4(object.matrixWorld);
+
+          if (playerBox.intersectsBox(objectBox)) {
+            return object; // Return the collided object
+          }
+        }
+        return null; // No collision
+      }
+
+      function updateStats(delta) {
+        // Update UI bars
+        staminaBar.style.width = (playerStamina / maxStamina) * 100 + "%";
+        sanityBar.style.width = (playerSanity / maxSanity) * 100 + "%";
+
+        // Sanity drain
+        sanityDrainTimer += delta;
+        if (sanityDrainTimer > 2.0) {
+          // Drain sanity every 2 seconds
+          sanityDrainTimer = 0;
+          let drainAmount = 0.5;
+
+          // Drain faster in dark
+          if (flashlight.intensity === 0) {
+            let inLight = false;
+            const checkRangeSq = 8 * 8; // Square of light range for faster check
+
+            // Check distance from point lights
+            scene.traverse((obj) => {
+              // Check if object is a PointLight, visible, and part of a visible parent group
+              if (
+                obj.isPointLight &&
+                obj.intensity > 0 &&
+                obj.visible &&
+                obj.parent &&
+                obj.parent.visible
+              ) {
+                const worldPos = new THREE.Vector3();
+                obj.getWorldPosition(worldPos); // Get world position of light
+                if (
+                  worldPos.distanceToSquared(camera.position) < checkRangeSq
+                ) {
+                  inLight = true;
+                }
+              }
+            });
+
+            if (!inLight) drainAmount = 2.0;
+          }
+
+          // --- NEW: Increase sanity drain during red shift ---
+          if (isRedShiftActive) {
+            drainAmount *= 2.5; // Drain 2.5x faster in red shift
+          }
+
+          playerSanity -= drainAmount;
+          if (playerSanity < 0) playerSanity = 0;
+
+          if (playerSanity <= 0) {
+            // Temporarily disable insanity death for testing
+            // endGame(false); // Game over from insanity
+            console.log("Sanity depleted!"); // Log for now
+          }
+        }
+      }
+
+      function updateWorld(delta) {
+        // Flicker fluorescent lights
+        scene.traverse((obj) => {
+          if (
+            obj.isPointLight &&
+            obj.userData.isFluorescent &&
+            obj.visible &&
+            obj.parent &&
+            obj.parent.visible
+          ) {
+            // Check parent visibility
+            if (Math.random() < 0.05) {
+              obj.intensity = obj.userData.baseIntensity * Math.random() * 0.5; // More pronounced flicker
+            } else {
+              obj.intensity = obj.userData.baseIntensity;
+            }
+          }
+          if (
+            obj.isPointLight &&
+            obj.userData.isExitLight &&
+            obj.visible &&
+            obj.parent &&
+            obj.parent.visible
+          ) {
+            // --- MODIFIED: Flicker based on baseIntensity ---
+            // Flicker between 0.5x and 1.5x of its base intensity
+            obj.intensity =
+              (Math.sin(performance.now() * 0.005) + 1) *
+                (obj.userData.baseIntensity * 0.5) +
+              obj.userData.baseIntensity * 0.5;
+          }
+        });
+      }
+
+      function checkInteractions() {
+        if (inventoryOpen) {
+          interactionPrompt.style.display = "none";
+          return;
+        }
+
+        const raycaster = new THREE.Raycaster(
+          camera.position,
+          camera.getWorldDirection(new THREE.Vector3())
+        );
+        const intersects = raycaster.intersectObjects(interactableItems);
+
+        let foundInteractable = false;
+        if (intersects.length > 0 && intersects[0].distance < 3) {
+          const item = intersects[0].object;
+          // Check if the object is actually visible (not part of an unloaded chunk)
+          let objVisible = item.visible;
+          let parent = item.parent;
+          while (parent && parent !== scene) {
+            if (!parent.visible) {
+              objVisible = false;
+              break;
+            }
+            parent = parent.parent;
+          }
+
+          if (objVisible && item.userData.itemName) {
+            const itemName = item.userData.itemName;
+            showInteractionPrompt(`Click to pick up ${ITEMS[itemName].name}`);
+            foundInteractable = true;
+          }
+        }
+
+        if (!foundInteractable) {
+          interactionPrompt.style.display = "none";
+        }
+      }
+
+      function showInteractionPrompt(text, duration = null) {
+        interactionPrompt.innerHTML = text.replace(
+          /\[(\w+)\]/g,
+          '<span class="key">$1</span>'
+        );
+        interactionPrompt.style.display = "block";
+
+        if (duration) {
+          setTimeout(() => {
+            // Check if the prompt is still the same one we set
+            if (
+              interactionPrompt.style.display === "block" &&
+              interactionPrompt.innerHTML.includes(text.split(" ")[0])
+            ) {
+              interactionPrompt.style.display = "none";
+            }
+          }, duration);
+        }
+      }
+
+      function endGame(isWin) {
+        gameWon = isWin; // Set flag to prevent exit despawning after win
+        gameRunning = false;
+        controls.unlock();
+
+        hud.style.display = "none";
+        crosshair.style.display = "none";
+        hotbar[0].parentElement.style.display = "none";
+        blocker.style.display = "none";
+        inventoryScreen.style.display = "none";
+
+        if (isWin) {
+          // --- MODIFIED: Use new helper function ---
+          showWinScreen(
+            "You Escaped...?",
+            "You push through the discolored door... <br />...only to find yourself somewhere else."
+          );
+        } else {
+          gameOverScreen.style.display = "flex";
+        }
+      }
+
+      // --- NEW: Helper function to show the win screen with custom text ---
+      function showWinScreen(title, message) {
+        // Hide loading/blocker if it's visible
+        blocker.style.display = "none";
+        instructions.style.display = "none";
+
+        // Get win screen elements
+        const winTitle = document.getElementById("win-title");
+        const winMessage = document.getElementById("win-message");
+
+        // Set custom text
+        winTitle.textContent = title;
+        winMessage.innerHTML = message.replace("\n", "<br />"); // Allow newlines
+
+        // Show the win screen
+        gameWinScreen.style.display = "flex";
+      }
+
+      // --- MODIFIED: triggerLevelLoad now checks if file exists ---
+      async function triggerLevelLoad(levelName, messageTitle, messageBody) {
+        if (gameWon) return; // Prevent double trigger
+
+        console.log(`Exit triggered! Checking for ${levelName}...`);
+
+        gameRunning = false;
+        gameWon = true; // Use gameWon to prevent this from firing again
+        controls.unlock();
+
+        // Show a "Loading..." message first
+        hud.style.display = "none";
+        crosshair.style.display = "none";
+        hotbar[0].parentElement.style.display = "none";
+        blocker.style.display = "flex";
+        instructions.style.display = "block";
+        instructions.style.cursor = "default";
+        instructions.innerHTML = `<h1>${messageTitle}</h1><p>${messageBody}</p>`; // Use passed-in body
+
+        try {
+          // Check if the level file exists using a HEAD request
+          const response = await fetch(levelName, { method: "HEAD" });
+
+          if (response.ok) {
+            // File exists, redirect after a short delay
+            console.log(`${levelName} found, redirecting...`);
+            setTimeout(() => {
+              window.location.href = levelName;
+            }, 1500); // Give user a moment to read
+          } else {
+            // File does not exist (404, etc.)
+            console.log(`${levelName} not found. Showing win screen.`);
+            // Show the win screen with a custom "file not found" message
+            showWinScreen(
+              messageTitle, // "You Escaped...?"
+              "The path forward is not ready.<br />You have escaped this level."
+            );
+          }
+        } catch (e) {
+          // Fetch failed (CORS, network error, or offline)
+          console.error(`Failed to check for ${levelName}:`, e);
+          // Show the win screen with a generic error message
+          showWinScreen(
+            messageTitle,
+            "You've escaped this level... <br />...but the path ahead is unclear."
+          );
+        }
+      }
+    </script>
+  </body>
+</html>
+<!-- PAUSE MENU OVERLAY -->
+<div id="pause-menu">
+  <div class="pause-box">
+    <h2>Paused</h2>
+    <button onclick="resumeGame()">▶ Resume</button>
+    <button onclick="restartLevel()">⟳ Restart</button>
+    <button onclick="returnToMain()">← Main Menu</button>
+  </div>
+</div>
+
+<style>
+  #pause-menu {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    color: #0f0;
+    font-family: "Courier New", monospace;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+  .pause-box {
+    border: 2px solid #0f0;
+    padding: 20px;
+    text-align: center;
+    background: #000;
+    box-shadow: 0 0 20px #0f0;
+  }
+  .pause-box button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px 20px;
+    background: transparent;
+    border: 2px solid #0f0;
+    color: #0f0;
+    cursor: pointer;
+    font-size: 1.2em;
+  }
+  .pause-box button:hover {
+    background: #0f0;
+    color: #000;
+  }
+</style>
+
+<script>
+(function(){
+  const pauseMenu = document.getElementById("pause-menu");
+  let paused = false;
+  let animationFrameId;
+
+  // Example game loop — replace with your own update/draw logic
+  function gameLoop() {
+    if (!paused) {
+      // --- Your game update and render code goes here ---
+      // e.g. updatePlayer(), drawScene(), etc.
+    }
+    animationFrameId = requestAnimationFrame(gameLoop);
+  }
+
+  // Start the loop
+  animationFrameId = requestAnimationFrame(gameLoop);
+
+  // Toggle pause with "P" key
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "p") {
+      if (paused) {
+        resumeGame();
+      } else {
+        showPauseMenu();
+      }
+    }
+  });
+
+  function showPauseMenu() {
+    paused = true;
+    pauseMenu.style.display = "flex";
+  }
+
+  window.resumeGame = function() {
+    paused = false;
+    pauseMenu.style.display = "none";
+  };
+
+  window.restartLevel = function() {
+    location.reload();
+  };
+
+  window.returnToMain = function() {
+    window.location.href = "index.html"; // adjust to your launcher filename
+  };
+})();
+</script>
+      }
+
+      vid.addEventListener("ended", () => {
+        launchLevel0();
+      });
+
+      skip.addEventListener("click", () => {
+        launchLevel0();
+      });
+    </script>
+  </body>

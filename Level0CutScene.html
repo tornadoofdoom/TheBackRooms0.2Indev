@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Level 0 – Cutscene</title>
+  <style>
+    /* --- GLOBAL STYLES --- */
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      font-family: "Courier New", monospace;
+    }
+
+    /* --- CUTSCENE --- */
+    #cutscene {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    #cutscene video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #skip {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      border: 1px solid #0f0;
+      background: transparent;
+      color: #0f0;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    /* --- FALLBACK GAME AREA (only used if redirect fails) --- */
+    #game {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #111;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #0f0;
+      font-size: 14px;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CUTSCENE -->
+  <div id="cutscene">
+    <!-- MP4 file located at /assets/videos/level0_intro.mp4 -->
+    <video src="assets/videos/level0_intro_fixed.mp4" autoplay muted playsinline controls></video>
+    <button id="skip">Skip</button>
+  </div>
+
+  <!-- FALLBACK GAME AREA -->
+  <div id="game">
+    <div id="hud">Level 0 — ESC to exit</div>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    const cutscene = document.getElementById('cutscene');
+    const vid = document.getElementById('vid');
+    const skip = document.getElementById('skip');
+    const game = document.getElementById('game');
+    const canvas = document.getElementById('canvas');
+
+    // Function to launch Level0.html
+    function launchLevel0() {
+      // Redirect the whole page to Level0.html
+      window.location.href = "Level0.html";
+    }
+
+    // If video ends, go to Level0.html
+    vid.onended = launchLevel0;
+
+    // If skip is clicked, go to Level0.html
+    skip.onclick = launchLevel0;
+
+    // If the video fails to load (e.g. file not created yet), skip straight to Level0.html
+    vid.onerror = launchLevel0;
+
+    // Optional fallback: if redirect fails, show placeholder canvas
+    function fallbackGame() {
+      cutscene.style.display = 'none';
+      game.style.display = 'block';
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0f0';
+      ctx.font = '20px Courier New';
+      ctx.fillText('Fallback Level 0 placeholder — replace with your mechanics', 40, 60);
+    }
+
+    // If redirect fails for some reason, run fallback
+    window.addEventListener("error", () => fallbackGame());
+  </script>
+</body>
+</html>

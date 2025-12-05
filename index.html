@@ -14,16 +14,15 @@
         height: 100vh;
         overflow: hidden;
       }
-      #loader,
-      #main-menu,
-      #sub-menu {
+      #loader, #main-menu, #sub-menu, #level-submenu {
         position: fixed;
         inset: 0;
-        display: flex;
+        display: none;
         flex-direction: column;
         justify-content: center;
         align-items: center;
       }
+      #loader { display: flex; }
       #log {
         width: 80%;
         max-width: 800px;
@@ -45,18 +44,13 @@
         animation: spin 1s linear infinite;
         margin-bottom: 20px;
       }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
+      @keyframes spin { to { transform: rotate(360deg); } }
       .menu-title {
         font-size: 2.5em;
         margin-bottom: 30px;
         text-shadow: 0 0 10px #0f0;
       }
-      .menu-btn,
-      .level-btn {
+      .menu-btn, .level-btn {
         background: transparent;
         border: 2px solid #0f0;
         color: #0f0;
@@ -67,44 +61,20 @@
         width: 280px;
         transition: all 0.3s ease;
       }
-      .menu-btn:hover,
-      .level-btn:hover {
+      .menu-btn:hover, .level-btn:hover {
         background: #0f0;
         color: #000;
         box-shadow: 0 0 20px #0f0;
       }
       @keyframes flashRed {
-        0% {
-          color: #f00;
-          border-color: #f00;
-        }
-        50% {
-          color: #000;
-          border-color: #000;
-          background: #f00;
-        }
-        100% {
-          color: #f00;
-          border-color: #f00;
-          background: transparent;
-        }
+        0% { color: #f00; border-color: #f00; }
+        50% { color: #000; border-color: #000; background: #f00; }
+        100% { color: #f00; border-color: #f00; background: transparent; }
       }
-      .scp-btn {
-        border-color: #f00;
-        color: #f00;
-        text-shadow: 0 0 10px #f00;
-        animation: flashRed 1s infinite;
-      }
-      .error {
-        color: #f55;
-      }
-      .success {
-        color: #0f0;
-      }
-      .scp-log {
-        color: #f00;
-        text-shadow: 0 0 5px #f00;
-      }
+      .scp-btn { border-color: #f00; color: #f00; text-shadow: 0 0 10px #f00; animation: flashRed 1s infinite; }
+      .error { color: #f55; }
+      .success { color: #0f0; }
+      .scp-log { color: #f00; text-shadow: 0 0 5px #f00; }
 
       /* --- SCP overlay --- */
       #scp-warning {
@@ -137,16 +107,8 @@
         color: #f00;
         cursor: pointer;
       }
-      #scp-warning button:hover {
-        background: #f00;
-        color: #000;
-        box-shadow: 0 0 20px #f00;
-      }
-      #scp-error {
-        margin-top: 15px;
-        color: #f55;
-        min-height: 22px;
-      }
+      #scp-warning button:hover { background: #f00; color: #000; box-shadow: 0 0 20px #f00; }
+      #scp-error { margin-top: 15px; color: #f55; min-height: 22px; }
 
       /* --- Cutscene overlay --- */
       .overlay {
@@ -158,11 +120,7 @@
         justify-content: center;
         z-index: 1000;
       }
-      .overlay video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
+      .overlay video { width: 100%; height: 100%; object-fit: cover; }
       .overlay button {
         position: absolute;
         right: 16px;
@@ -174,8 +132,8 @@
         cursor: pointer;
       }
 
-      /* --- Sub-menu button container scroll --- */
-      #button-container {
+      /* --- Category submenu scroll --- */
+      #button-container, #level-button-container {
         max-height: 70vh;
         overflow-y: auto;
         display: flex;
@@ -192,22 +150,25 @@
     </div>
 
     <!-- MAIN MENU -->
-    <div id="main-menu" style="display: none">
+    <div id="main-menu">
       <div class="menu-title">MAIN MENU</div>
-      <button class="menu-btn" onclick="showCategory('backrooms')">
-        Backrooms Levels
-      </button>
-      <button class="menu-btn scp-btn" onclick="showCategory('scp')">
-        SCP Levels
-      </button>
+      <button class="menu-btn" onclick="showCategory('backrooms')">Backrooms Levels</button>
+      <button class="menu-btn scp-btn" onclick="showCategory('scp')">SCP Levels</button>
       <button class="menu-btn" onclick="showCategory('old')">Old Game</button>
     </div>
 
-    <!-- SUB MENU -->
-    <div id="sub-menu" style="display: none">
+    <!-- CATEGORY SUB MENU -->
+    <div id="sub-menu">
       <div class="menu-title" id="sub-title"></div>
       <div id="button-container"></div>
       <button class="menu-btn" onclick="returnToMain()">← Back</button>
+    </div>
+
+    <!-- LEVEL SUBMENU (per-level) -->
+    <div id="level-submenu">
+      <div class="menu-title" id="level-title"></div>
+      <div id="level-button-container"></div>
+      <button class="menu-btn" onclick="returnToCategory()">← Back</button>
     </div>
 
     <!-- SCP WARNING -->
@@ -217,11 +178,7 @@
         You are attempting to access a restricted SCP containment area.<br />
         Unauthorized entry may result in anomalous exposure.
       </p>
-      <input
-        id="scp-pass"
-        type="password"
-        placeholder="Enter containment passcode"
-      />
+      <input id="scp-pass" type="password" placeholder="Enter containment passcode" />
       <div>
         <button id="scp-confirm">Confirm Entry</button>
         <button id="scp-cancel">Cancel</button>
@@ -230,46 +187,44 @@
     </div>
 
     <!-- Siren -->
-    <audio
-      id="scp-siren"
-      src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
-      preload="auto"
-      loop
-    ></audio>
+    <audio id="scp-siren" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto" loop></audio>
 
     <script>
-      /* --- CONFIG --- */
-      // Keep your original registry style
-      const CUTSCENE_VIDEO = "Level0_intro_safe.mp4";
-      const LEVEL0_HTML = "Level0.html";
+      /* ---------------------------
+       * CONFIG: Plug-and-play levels
+       * ---------------------------
+       * Add/remove entries here. The loader builds menus automatically.
+       * Fields:
+       * - filename: HTML file to launch (relative path)
+       * - name: Button label
+       * - category: "backrooms" | "scp" | "old"
+       * - requiresPasscode: optional boolean to gate behind SCP overlay
+       * Cutscene is auto-detected by checking "<basename>.mp4" next to the HTML.
+       */
 
-      const files = [
-        {
-          filename: LEVEL0_HTML,
-          name: "Level 0 – Office Maze",
-          category: "backrooms",
-        },
-        {
-          filename: "Level1.html",
-          name: "Level 1 – Parking Garage",
-          category: "backrooms",
-        },
-        {
-          filename: "Level37.html",
-          name: "Level 37 – Poolrooms",
-          category: "backrooms",
-        },
-        { filename: "TEMP.html", name: "Old Backrooms Game", category: "old" },
-        { filename: "Level0v2.html", name: "SCP Level 0", category: "scp" },
+      const levels = [
+        { filename: "Level0.html",   name: "Level 0 – Office Maze",          category: "old" },
+        { filename: "Level0v2.html", name: "Level 0 – Multi file test",          category: "backrooms" },
+        { filename: "Level37.html",  name: "Level 37 – Poolrooms",           category: "backrooms" },
+        { filename: "SCPLevel0.html",name: "SCP Level 0",                    category: "scp", requiresPasscode: true },
+        { filename: "Level1.html",   name: "Level 1 – Parking Garage",       category: "backrooms" },
+        { filename: "TEMP.html",     name: "Old Backrooms Game",             category: "old" }
       ];
 
-      const validLevels = [];
+      /* --- STATE --- */
+      const validLevels = [];          // { ...entry, hasCutscene: boolean }
+      let lastCategory = null;         // remember which category we were viewing
+      let selectedLevel = null;        // currently opened level in the per-level submenu
+
       const log = document.getElementById("log");
       const loader = document.getElementById("loader");
       const mainMenu = document.getElementById("main-menu");
       const subMenu = document.getElementById("sub-menu");
       const buttonContainer = document.getElementById("button-container");
       const subTitle = document.getElementById("sub-title");
+      const levelSubmenu = document.getElementById("level-submenu");
+      const levelTitle = document.getElementById("level-title");
+      const levelButtonContainer = document.getElementById("level-button-container");
 
       let SCP_PASSCODE = String(Math.floor(100 + Math.random() * 900));
 
@@ -294,185 +249,165 @@
           "Preparing level registry...",
           "Cross-referencing SCP containment files...",
           "Validating SCP Level entries...",
-          "⚠️ Warning: anomalous entities detected...",
+          "⚠️ Warning: anomalous entities detected..."
         ];
         for (const c of checks) {
-          const cls =
-            c.includes("SCP") || c.includes("anomalous") ? "scp-log" : "";
+          const cls = c.includes("SCP") || c.includes("anomalous") ? "scp-log" : "";
           await addLog(c, cls);
         }
-        await addLog(
-          `Containment override token issued: ${SCP_PASSCODE}`,
-          "scp-log"
-        );
+        await addLog(`Containment override token issued: ${SCP_PASSCODE}`, "scp-log");
       }
 
-      /* --- PROBES (HTML availability) --- */
-      function probeHTMLExists(path) {
-        return new Promise((resolve) => {
-          const iframe = document.createElement("iframe");
-          Object.assign(iframe.style, {
-            width: "0",
-            height: "0",
-            border: "0",
-            visibility: "hidden",
+      /* --- FILE PROBE HELPERS --- */
+      function basename(path) {
+        const i = path.lastIndexOf(".");
+        return i >= 0 ? path.slice(0, i) : path;
+      }
+
+      function probeExists(url) {
+        // Use HEAD fetch; falls back gracefully if server disallows HEAD
+        return fetch(url, { method: "HEAD" })
+          .then(res => res.ok)
+          .catch(() => false);
+      }
+
+      async function checkEntry(entry) {
+        const htmlOk = await probeExists(entry.filename);
+        const mp4Name = basename(entry.filename) + ".mp4";
+        const mp4Ok = await probeExists(mp4Name);
+
+        await addLog(`→ Scanning ${entry.name} (${entry.filename})...`);
+
+        if (htmlOk) {
+          const cls = entry.category === "scp" ? "scp-log" : "success";
+          const tag = entry.category === "scp" ? "anomaly verified" : "verified";
+          await addLog(`[✓] ${entry.name} ${tag}`, cls);
+
+          validLevels.push({
+            ...entry,
+            hasCutscene: mp4Ok,
+            cutsceneSrc: mp4Ok ? mp4Name : null
           });
-          iframe.src = path;
-
-          let timeout = setTimeout(() => {
-            cleanup();
-            resolve(false);
-          }, 2500);
-          function cleanup() {
-            clearTimeout(timeout);
-            try {
-              iframe.remove();
-            } catch {}
+          if (mp4Ok) {
+            await addLog(`Cutscene detected: ${mp4Name}`, "success");
+          } else {
+            await addLog(`No cutscene found for ${entry.name}`, "error");
           }
-
-          iframe.onload = () => {
-            const doc = iframe.contentDocument;
-            const hasContent =
-              doc && doc.body && doc.body.innerHTML.trim().length > 0;
-            cleanup();
-            resolve(hasContent);
-          };
-          iframe.onerror = () => {
-            cleanup();
-            resolve(false);
-          };
-
-          document.body.appendChild(iframe);
-        });
-      }
-
-      async function checkFile(file) {
-        await addLog(`→ Scanning ${file.name} (${file.filename})...`);
-        const ok = await probeHTMLExists(file.filename);
-        if (ok) {
-          validLevels.push(file);
-          await addLog(
-            `[✓] ${file.name} ${
-              file.category === "scp" ? "anomaly verified" : "verified"
-            }`,
-            file.category === "scp" ? "scp-log" : "success"
-          );
         } else {
-          await addLog(`[✖] ${file.name} missing or failed to load`, "error");
+          await addLog(`[✖] ${entry.name} missing or failed to load`, "error");
         }
       }
 
       async function bootSequence() {
         await fakeChecks();
-        for (const f of files) {
-          await checkFile(f);
+
+        // De-duplicate and sanitize
+        const seen = new Set();
+        const sanitized = levels.filter(l => {
+          if (!l || !l.filename || !l.name || !l.category) return false;
+          if (seen.has(l.filename)) return false;
+          seen.add(l.filename);
+          return true;
+        });
+
+        for (const entry of sanitized) {
+          await checkEntry(entry);
         }
+
         await addLog("Scan complete.");
-        if (validLevels.length) {
-          await addLog(`Found ${validLevels.length} valid level(s)`, "success");
-          setTimeout(() => {
-            loader.style.display = "none";
-            mainMenu.style.display = "flex";
-          }, 900);
-        } else {
-          await addLog(
-            "No valid levels found. Place level HTML files next to index.html.",
-            "error"
-          );
-        }
+        loader.style.display = "none";
+        mainMenu.style.display = "flex";
       }
 
-      /* --- MENUS --- */
+      /* --- CATEGORY MENU --- */
       function showCategory(category) {
+        lastCategory = category;
         mainMenu.style.display = "none";
+        levelSubmenu.style.display = "none";
         subMenu.style.display = "flex";
         buttonContainer.innerHTML = "";
 
         subTitle.textContent =
-          category === "backrooms"
-            ? "Backrooms Levels"
-            : category === "scp"
-            ? "SCP Levels"
-            : "Old Game";
+          category === "backrooms" ? "Backrooms Levels" :
+          category === "scp" ? "SCP Levels" :
+          "Old Game";
 
-        if (category === "backrooms") {
-          // Level 0 button — opens its submenu
-          const level0Available = !!validLevels.find(
-            (l) => l.filename === LEVEL0_HTML
-          );
-          const level0Btn = document.createElement("button");
-          level0Btn.className = "level-btn";
-          level0Btn.textContent = level0Available
-            ? "Level 0"
-            : "Level 0 (unavailable — file missing)";
-          level0Btn.disabled = !level0Available;
-          level0Btn.onclick = () => showLevel0Options(level0Available);
-          buttonContainer.appendChild(level0Btn);
+        const list = validLevels
+          .filter(l => l.category === category)
+          .slice()
+          .sort((a, b) => a.name.localeCompare(b.name));
 
-          // Other backrooms levels
-          validLevels
-            .filter(
-              (l) => l.category === "backrooms" && l.filename !== LEVEL0_HTML
-            )
-            .forEach((level) => {
-              const btn = document.createElement("button");
-              btn.className = "level-btn";
-              btn.textContent = level.name;
-              btn.onclick = () => launchLevel(level.filename);
-              buttonContainer.appendChild(btn);
-            });
+        if (!list.length) {
+          const info = document.createElement("div");
+          info.textContent = "No levels available in this category.";
+          info.className = "error";
+          buttonContainer.appendChild(info);
+          return;
         }
 
-        if (category === "scp") {
-          validLevels
-            .filter((l) => l.category === "scp")
-            .forEach((level) => {
-              const btn = document.createElement("button");
-              btn.className = "level-btn scp-btn";
-              btn.textContent = level.name;
-              btn.onclick = () => showSCPWarning(level.filename);
-              buttonContainer.appendChild(btn);
-            });
-        }
-
-        if (category === "old") {
-          validLevels
-            .filter((l) => l.category === "old")
-            .forEach((level) => {
-              const btn = document.createElement("button");
-              btn.className = "level-btn";
-              btn.textContent = level.name;
-              btn.onclick = () => launchLevel(level.filename);
-              buttonContainer.appendChild(btn);
-            });
+        for (const level of list) {
+          const btn = document.createElement("button");
+          btn.className = level.category === "scp" ? "level-btn scp-btn" : "level-btn";
+          btn.textContent = level.name;
+          btn.onclick = () => openLevelSubmenu(level);
+          buttonContainer.appendChild(btn);
         }
       }
 
-      function showLevel0Options(levelAvailable) {
-        subTitle.textContent = "Level 0 — Choose Start";
-        buttonContainer.innerHTML = "";
-
-        // Play Cutscene (inline from index), then Level0.html
-        const playCutsceneBtn = document.createElement("button");
-        playCutsceneBtn.className = "level-btn";
-        playCutsceneBtn.textContent = "Play Cutscene";
-        playCutsceneBtn.disabled = !levelAvailable; // require Level0.html present to proceed
-        playCutsceneBtn.onclick = () =>
-          playCutsceneThenLevel(CUTSCENE_VIDEO, LEVEL0_HTML);
-        buttonContainer.appendChild(playCutsceneBtn);
-
-        // Play Level (skip cutscene)
-        const playLevelBtn = document.createElement("button");
-        playLevelBtn.className = "level-btn";
-        playLevelBtn.textContent = levelAvailable
-          ? "Play Level"
-          : "Play Level (unavailable — file missing)";
-        playLevelBtn.disabled = !levelAvailable;
-        playLevelBtn.onclick = () => launchLevel(LEVEL0_HTML);
-        buttonContainer.appendChild(playLevelBtn);
+      function returnToMain() {
+        subMenu.style.display = "none";
+        levelSubmenu.style.display = "none";
+        mainMenu.style.display = "flex";
       }
 
-      /* --- Inline cutscene overlay and flow --- */
+      function returnToCategory() {
+        levelSubmenu.style.display = "none";
+        subMenu.style.display = "flex";
+      }
+
+      /* --- PER-LEVEL SUBMENU --- */
+      function openLevelSubmenu(level) {
+        selectedLevel = level;
+
+        // If SCP-gated, require pass first, then show submenu
+        if (level.category === "scp" && level.requiresPasscode) {
+          showSCPWarning(() => {
+            renderLevelSubmenu(level);
+          });
+        } else {
+          renderLevelSubmenu(level);
+        }
+      }
+
+      function renderLevelSubmenu(level) {
+        subMenu.style.display = "none";
+        levelSubmenu.style.display = "flex";
+        levelTitle.textContent = level.name;
+        levelButtonContainer.innerHTML = "";
+
+        // If a cutscene exists, show both options; otherwise only Play Level
+        if (level.hasCutscene && level.cutsceneSrc) {
+          const playCutsceneBtn = document.createElement("button");
+          playCutsceneBtn.className = "level-btn";
+          playCutsceneBtn.textContent = "Play Cutscene";
+          playCutsceneBtn.onclick = () => playCutsceneThenLevel(level.cutsceneSrc, level.filename);
+          levelButtonContainer.appendChild(playCutsceneBtn);
+
+          const playLevelBtn = document.createElement("button");
+          playLevelBtn.className = "level-btn";
+          playLevelBtn.textContent = "Play Level";
+          playLevelBtn.onclick = () => launchLevel(level.filename);
+          levelButtonContainer.appendChild(playLevelBtn);
+        } else {
+          const playLevelBtn = document.createElement("button");
+          playLevelBtn.className = "level-btn";
+          playLevelBtn.textContent = "Play Level";
+          playLevelBtn.onclick = () => launchLevel(level.filename);
+          levelButtonContainer.appendChild(playLevelBtn);
+        }
+      }
+
+      /* --- LAUNCH FLOW (Cutscene + Level iframe) --- */
       function playCutsceneThenLevel(videoSrc, levelFile) {
         const overlay = document.createElement("div");
         overlay.className = "overlay";
@@ -492,79 +427,20 @@
 
         const tryPlay = () => vid.play().catch(() => {});
         tryPlay();
-        document.body.addEventListener(
-          "click",
-          () => {
-            if (vid.paused) tryPlay();
-          },
-          { once: true }
-        );
+        document.body.addEventListener("click", () => {
+          if (vid.paused) tryPlay();
+        }, { once: true });
 
-        vid.addEventListener("ended", () => {
-          cleanupOverlay();
-          launchLevel(levelFile);
-        });
-        skip.addEventListener("click", () => {
-          cleanupOverlay();
-          launchLevel(levelFile);
-        });
-        vid.addEventListener("error", () => {
-          cleanupOverlay();
-          launchLevel(levelFile);
-        });
+        const complete = () => { cleanupOverlay(); launchLevel(levelFile); };
+        vid.addEventListener("ended", complete);
+        skip.addEventListener("click", complete);
+        vid.addEventListener("error", complete);
 
         function cleanupOverlay() {
-          try {
-            overlay.remove();
-          } catch {}
+          try { overlay.remove(); } catch {}
         }
       }
 
-      function returnToMain() {
-        subMenu.style.display = "none";
-        mainMenu.style.display = "flex";
-      }
-
-      /* --- SCP overlay logic --- */
-      function showSCPWarning(file) {
-        const warning = document.getElementById("scp-warning");
-        const confirmBtn = document.getElementById("scp-confirm");
-        const cancelBtn = document.getElementById("scp-cancel");
-        const passInput = document.getElementById("scp-pass");
-        const errorMsg = document.getElementById("scp-error");
-        const siren = document.getElementById("scp-siren");
-
-        warning.style.display = "flex";
-        errorMsg.textContent = "";
-        passInput.value = "";
-
-        try {
-          siren.currentTime = 0;
-          siren.play().catch(() => {});
-        } catch (e) {}
-
-        confirmBtn.onclick = () => {
-          if (passInput.value === SCP_PASSCODE) {
-            try {
-              siren.pause();
-            } catch (e) {}
-            warning.style.display = "none";
-            launchLevel(file);
-          } else {
-            errorMsg.textContent = "Access denied. Invalid containment code.";
-          }
-        };
-
-        cancelBtn.onclick = () => {
-          try {
-            siren.pause();
-          } catch (e) {}
-          warning.style.display = "none";
-          subMenu.style.display = "flex";
-        };
-      }
-
-      /* --- LEVEL LAUNCHER --- */
       function launchLevel(file) {
         const iframe = document.createElement("iframe");
         iframe.src = file;
@@ -576,25 +452,60 @@
           height: "100%",
           border: "none",
           zIndex: "1000",
-          background: "#000",
+          background: "#000"
         });
         document.body.appendChild(iframe);
-        subMenu.style.display = "none";
+        levelSubmenu.style.display = "none";
 
         const escHandler = (e) => {
           if (e.key === "Escape") {
-            try {
-              iframe.remove();
-            } catch {}
-            subMenu.style.display = "flex";
+            try { iframe.remove(); } catch {}
+            // Return to the level submenu for the same level (skip-before-play UX persists)
+            renderLevelSubmenu(selectedLevel);
             document.removeEventListener("keydown", escHandler);
           }
         };
         document.addEventListener("keydown", escHandler);
       }
 
+      /* --- SCP overlay logic --- */
+      function showSCPWarning(onSuccess) {
+        const warning = document.getElementById("scp-warning");
+        const confirmBtn = document.getElementById("scp-confirm");
+        const cancelBtn = document.getElementById("scp-cancel");
+        const passInput = document.getElementById("scp-pass");
+        const errorMsg = document.getElementById("scp-error");
+        const siren = document.getElementById("scp-siren");
+
+        warning.style.display = "flex";
+        errorMsg.textContent = "";
+        passInput.value = "";
+
+        try { siren.currentTime = 0; siren.play().catch(() => {}); } catch (e) {}
+
+        confirmBtn.onclick = () => {
+          if (passInput.value === SCP_PASSCODE) {
+            try { siren.pause(); } catch (e) {}
+            warning.style.display = "none";
+            onSuccess?.();
+          } else {
+            errorMsg.textContent = "Access denied. Invalid containment code.";
+          }
+        };
+
+        cancelBtn.onclick = () => {
+          try { siren.pause(); } catch (e) {}
+          warning.style.display = "none";
+          // If cancelling, return to the category view
+          if (lastCategory) showCategory(lastCategory);
+          else returnToMain();
+        };
+      }
+
       /* --- BOOT --- */
-      setTimeout(bootSequence, 800);
+      (async function start() {
+        await bootSequence();
+      })();
     </script>
   </body>
 </html>

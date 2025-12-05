@@ -1,25 +1,17 @@
 {
-  "gameTitle": "Backrooms Game",
-  "levels": [
-    {
-      "id": 0,
-      "name": "Level 0 - Endless Office Maze",
-      "file": "Level0.html"
-    },
-    {
-      "id": 1,
-      "name": "Level 1 - Parking Garage",
-      "file": "Level1.html"
-    },
-    {
-      "id": 37,
-      "name": "Level 37 - Poolrooms",
-      "file": "Level37.html"
-    },
-    {
-      "id": "TEMP",
-      "name": "Old Backrooms Game",
-      "file": "TEMP.html"
-    }
-  ]
+  "name": "thebackrooms0.2indev",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "babylon": "^6.18.0",
+    "babylonjs": "^8.40.1",
+    "babylonjs-gui": "^8.40.1",
+    "three": "^0.181.2",
+    "throo": "^1.0.1",
+    "vite": "^7.2.6"
+  }
 }
